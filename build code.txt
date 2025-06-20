@@ -1,0 +1,4 @@
+pyinstaller --onefile --noconsole --version-file=version_info.txt --name="Chrome自動化工具" --add-data "web;web" chrome_automation_tool.py
+
+
+pyinstaller --clean --onefile --noconsole --icon=assets/icon.ico --add-data "web;web" --hidden-import=tkinter --hidden-import=selenium --hidden-import=PIL --name "Chrome自動化工具" --collect-all selenium chrome_automation_tool.py

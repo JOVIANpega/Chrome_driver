@@ -1,0 +1,127 @@
+我要讓 cursor AI 幫我寫一段代碼 
+功能大概如下 幫我規劃PROMPT內容
+ 讓我貼給CURSOR去理解並製作
+用1234條列
+
+建立了一個Chrome自動化工具，它有以下特點：
+開啟程式會自動尋找同目錄EXE下的chromedriver.exe，不需要手動設定路徑 
+從同目錄下的command.txt讀取指令，自動執行
+需要能自動避開自動機器人檢測的功能
+介面簡潔，操作方便
+
+我需要他做的事情大概就是 打開某個IP的網址
+輸入帳號密碼
+找尋某個名稱 例如check 5g點下去 ，若開啟新的網頁就去看這個網友要不要再點下去 或者去找某個字串
+
+全部做完以後 產生一個LOG
+會將每一個步驟都 列出 後面顯示 PASS或FAIL
+例如 打開某個IP的網址= PASS
+
+
+
+以上的過程都需要從command.txt 去讀取每一個步驟
+
+
+
+----
+
+
+我需要你幫我用 Python 製作一套 Chrome 自動化工具，請依照以下需求進行開發：
+
+1. 程式基本功能：
+   - 程式啟動後，自動尋找與主程式（EXE）同目錄下的 `chromedriver.exe`。
+   - 不需手動設定路徑或安裝路徑變數。
+   - 從 `command.txt` 讀取操作指令，一行一個步驟，並依序執行。
+
+2. 指令設計（command.txt 格式如下）：
+   - 每行代表一個動作，例如：
+     - `OPEN_URL http://192.168.0.1`：打開指定網址
+     - `LOGIN admin password123`：輸入帳號密碼並登入
+     - `CLICK_BY_TEXT check 5g`：點選畫面上含指定文字的按鈕或連結
+     - `WAIT_FOR_TEXT 某字串`：等待畫面上出現指定文字
+     - `IF_TEXT 某字串 THEN CLICK_BY_TEXT 下一步`：若出現特定字串才執行某步驟
+     - `WAIT 3`：等待 3 秒
+
+3. 自動繞過機器人偵測：
+   - 加入適當的隨機延遲（如 sleep 1~3 秒之間）
+   - 模擬滑鼠移動或人類點擊行為
+   - 可選：使用已登入 Chrome Profile（透過 `user-data-dir`）
+
+4. 執行與記錄：
+   - 每個步驟都需要將執行結果記錄到 `log.txt`，格式如下：
+     ```
+     OPEN_URL http://192.168.0.1 = PASS
+     LOGIN admin/password123 = FAIL
+     CLICK_BY_TEXT check 5g = PASS
+     ```
+   - 可以同時顯示在畫面與記錄到檔案。
+   - 可用 tkinter 簡單 UI 或直接用 console 顯示目前步驟與狀態。
+
+請使用 `tkinter + selenium + webdriver-manager` 實作，程式名稱建議為 `chrome_automation.py`。謝謝。
+
+
+-----
+
+
+
+你這個設計思路非常實用！將帳號密碼寫入 `command.txt`，並使用 `=` 作為指令與參數的分隔符，再用 `||` 區隔帳號與密碼，這種語法：
+
+```
+LOGIN =admin||password123
+```
+
+對 Cursor AI 來說非常容易 parse，也方便日後給一般使用者編輯。
+
+---
+
+
+當然可以，以下是符合你需求的 **純文字格式 Prompt**，完全不含 Markdown、表格或格式語法，適合直接貼給 Cursor AI 使用：
+
+---
+
+我想製作一套可供多數人使用的 Chrome 自動化工具，請用 Python 撰寫，工具的需求如下：
+
+1. 程式會自動尋找與主程式同目錄的 chromedriver.exe，不需要手動輸入路徑或安裝環境變數。整體設計需能打包為 EXE 後直接運作。
+
+2. 所有操作步驟來自同目錄下的 command.txt，每行一個指令，格式為：
+   指令名 = 參數
+   指令與參數之間用等號（=）分隔。若參數有多個欄位，用兩個直線符號（||）區隔。
+
+   支援的指令如下：
+OPEN_URL = [網址]
+LOGIN = [帳號]||[密碼]
+CLICK_BY_TEXT = [畫面文字]
+WAIT = [秒數]
+WAIT_FOR_TEXT = [要等待出現的文字]
+IF_TEXT [條件文字] THEN CLICK_BY_TEXT [畫面文字]
+
+範例:
+開啟chrome
+ 輸入 google.com
+輸入張惠妹
+搜尋
+下載一張照片
+
+
+
+3. 程式需具備基本的錯誤處理與 LOG 紀錄功能：
+   每個步驟的執行結果應即時顯示在畫面上，並同步寫入 log.txt，格式如下：
+   [時間] 指令內容 = PASS
+   [時間] 指令內容 = FAIL（附上錯誤原因）
+
+4. 執行過程需模擬人類行為以避開自動機器人偵測，包括：
+
+   * 使用非 headless 模式啟動 Chrome
+   * 模擬滑鼠移動或點擊
+   * 執行前後加上隨機 sleep（例如 1\~3 秒）
+   * 可選擇載入使用者的 Chrome Profile（使用 user-data-dir）
+
+5. 介面設計需簡潔清楚，使用 tkinter 製作簡單 GUI：
+
+   * 提供按鈕可執行指令檔
+   * 顯示目前執行的指令內容
+   * 顯示即時的執行結果 log
+   * 整體流程無需終端機操作，讓非技術使用者也能直接使用
+
+請將指令解析與執行邏輯設計為可擴充的架構，未來可支援更多指令類型與參數控制。程式名稱建議為 chrome_automation_tool.py
+

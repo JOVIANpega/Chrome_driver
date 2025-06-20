@@ -1,0 +1,62 @@
+# 自動化命令，每行一個指令，格式為: 指令名 = 參數
+# 若參數有多個欄位，用兩個直線符號（||）區隔
+
+# 打開本地 HTML 頁面
+OPEN_URL = web/index.html
+
+# 等待頁面載入
+WAIT = 1
+
+# 點擊使用者名稱輸入框
+CLICK_BY_TEXT = 請輸入使用者名稱
+
+# 輸入使用者名稱和密碼
+LOGIN = 測試使用者||密碼123
+
+# 點擊登入按鈕
+CLICK_BY_TEXT = 登入
+
+# 等待登入結果
+WAIT = 1
+
+# 點擊項目名稱輸入框
+CLICK_BY_TEXT = 請輸入項目名稱
+
+# 輸入項目名稱
+LOGIN = 筆記型電腦||
+
+# 點擊價格輸入框
+CLICK_BY_TEXT = 請輸入價格
+
+# 輸入價格
+LOGIN = 25000||
+
+# 點擊新增項目按鈕
+CLICK_BY_TEXT = 新增項目
+
+# 等待項目新增
+WAIT = 2
+
+# 搜尋功能測試
+CLICK_BY_TEXT = 請輸入搜尋關鍵字
+LOGIN = 筆記型電腦||
+
+# 點擊搜尋按鈕
+CLICK_BY_TEXT = 搜尋
+
+# 等待搜尋結果
+WAIT_FOR_TEXT = 找到關鍵字
+
+# 測試互動按鈕
+CLICK_BY_TEXT = 顯示訊息
+WAIT = 1
+CLICK_BY_TEXT = 改變顏色
+WAIT = 1
+CLICK_BY_TEXT = 計數: 0
+WAIT = 1
+
+挪威國家廣播公司
+台灣的戰貓
+記者洛特
+需要有8條命才能存活
+有違挪威的一中政策 
