@@ -226,25 +226,45 @@ class ChromeAutomationTool:
             self.update_step(2)
             self.update_action("登入表單測試")
             self.add_log("測試登入表單")
-            time.sleep(1)  # 簡單模擬測試過程
+            
+            if not self.selenium_handler.test_login_form():
+                self.add_log("錯誤: 登入表單測試失敗")
+                self.mark_step_failed(2)
+            else:
+                self.add_log("登入表單測試成功")
             
             # 步驟 4: 資料管理測試
             self.update_step(3)
             self.update_action("資料管理測試")
             self.add_log("測試資料管理功能")
-            time.sleep(1)  # 簡單模擬測試過程
+            
+            if not self.selenium_handler.test_data_management():
+                self.add_log("錯誤: 資料管理測試失敗")
+                self.mark_step_failed(3)
+            else:
+                self.add_log("資料管理測試成功")
             
             # 步驟 5: 搜尋功能測試
             self.update_step(4)
             self.update_action("搜尋功能測試")
             self.add_log("測試搜尋功能")
-            time.sleep(1)  # 簡單模擬測試過程
+            
+            if not self.selenium_handler.test_search_function():
+                self.add_log("錯誤: 搜尋功能測試失敗")
+                self.mark_step_failed(4)
+            else:
+                self.add_log("搜尋功能測試成功")
             
             # 步驟 6: 互動按鈕測試
             self.update_step(5)
             self.update_action("互動按鈕測試")
             self.add_log("測試互動按鈕")
-            time.sleep(1)  # 簡單模擬測試過程
+            
+            if not self.selenium_handler.test_interactive_buttons():
+                self.add_log("錯誤: 互動按鈕測試失敗")
+                self.mark_step_failed(5)
+            else:
+                self.add_log("互動按鈕測試成功")
             
             # 步驟 7: 搜尋關鍵字
             base_step_index = 6  # 關鍵字搜尋的起始步驟索引

@@ -6,8 +6,8 @@ VSVersionInfo(
   ffi=FixedFileInfo(
     # filevers and prodvers should be always a tuple with four items: (1, 2, 3, 4)
     # Set not needed items to zero 0.
-    filevers=(1, 0, 0, 0),
-    prodvers=(1, 0, 0, 0),
+    filevers=(1, 0, 3, 0),
+    prodvers=(1, 0, 3, 0),
     # Contains a bitmask that specifies the valid bits 'flags'r
     mask=0x3f,
     # Contains a bitmask that specifies the Boolean attributes of the file.
@@ -31,12 +31,12 @@ VSVersionInfo(
         u'040404b0',
         [StringStruct(u'CompanyName', u''),
         StringStruct(u'FileDescription', u'Chrome 自動化工具'),
-        StringStruct(u'FileVersion', u'1.0.0'),
+        StringStruct(u'FileVersion', u'1.0.3'),
         StringStruct(u'InternalName', u'chrome_automation_tool'),
         StringStruct(u'LegalCopyright', u'Copyright (c) 2023'),
         StringStruct(u'OriginalFilename', u'Chrome自動化工具.exe'),
         StringStruct(u'ProductName', u'Chrome 自動化工具'),
-        StringStruct(u'ProductVersion', u'1.0.0')])
+        StringStruct(u'ProductVersion', u'1.0.3')])
       ]), 
     VarFileInfo([VarStruct(u'Translation', [1028, 1200])])
   ]
@@ -44,7 +44,18 @@ VSVersionInfo(
 
 Chrome 自動化工具版本記錄
 
-V0.2 (現行版本)
+V0.3 (現行版本)
+日期: 2023-10-20
+主要功能:
+- 模組化重構：將程式碼拆分為多個模組，提高可維護性
+- 實際測試功能：實現了真實的測試功能，不再只是模擬
+- 失敗步驟顯示：失敗的步驟會以紅色文字顯示
+- 字體大小控制：可調整步驟視窗的字體大小
+- 改進的錯誤處理：更詳細的錯誤日誌和異常處理
+- 類型提示：添加了 Python 類型提示，提高代碼可讀性
+- 常量定義：使用常量替代魔術數字
+
+V0.2
 日期: 2023-10-15
 主要功能:
 - 動態步驟清單：步驟列表在執行時動態生成，不再寫死在程式碼中
