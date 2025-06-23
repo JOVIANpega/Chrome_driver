@@ -339,6 +339,422 @@ class SeleniumHandler:
             logging.error(f"搜尋關鍵字時發生未知錯誤: {str(e)}")
             return False
     
+    # 基本操作指令
+    def refresh_page(self) -> bool:
+        """重新整理頁面"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            self.driver.refresh()
+            logging.info("頁面已重新整理")
+            
+            # 等待頁面載入
+            wait = WebDriverWait(self.driver, utils.DEFAULT_WAIT_TIME)
+            wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+            time.sleep(1)  # 額外等待確保頁面完全載入
+            return True
+        except Exception as e:
+            logging.error(f"重新整理頁面時發生錯誤: {str(e)}")
+            return False
+    
+    def go_back(self) -> bool:
+        """返回上一頁"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            self.driver.back()
+            logging.info("已返回上一頁")
+            
+            # 等待頁面載入
+            wait = WebDriverWait(self.driver, utils.DEFAULT_WAIT_TIME)
+            wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+            time.sleep(1)  # 額外等待確保頁面完全載入
+            return True
+        except Exception as e:
+            logging.error(f"返回上一頁時發生錯誤: {str(e)}")
+            return False
+    
+    def click_by_id(self, element_id: str) -> bool:
+        """點擊指定ID的元素"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            wait = WebDriverWait(self.driver, utils.DEFAULT_WAIT_TIME)
+            element = wait.until(EC.element_to_be_clickable((By.ID, element_id)))
+            element.click()
+            logging.info(f"已點擊ID為 {element_id} 的元素")
+            return True
+        except (NoSuchElementException, TimeoutException) as e:
+            logging.error(f"找不到ID為 {element_id} 的元素: {str(e)}")
+            return False
+        except Exception as e:
+            logging.error(f"點擊ID為 {element_id} 的元素時發生錯誤: {str(e)}")
+            return False
+    
+    def type_text(self, text: str) -> bool:
+        """在當前焦點元素中輸入文字"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            active_element = self.driver.switch_to.active_element
+            active_element.send_keys(text)
+            logging.info(f"已輸入文字: {text}")
+            return True
+        except Exception as e:
+            logging.error(f"輸入文字時發生錯誤: {str(e)}")
+            return False
+    
+    # 驗證指令
+    def verify_text_exists(self, text: str) -> bool:
+        """驗證頁面包含特定文字"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            page_source = self.driver.page_source
+            if text in page_source:
+                logging.info(f"驗證成功: 找到文字 '{text}'")
+                return True
+            else:
+                logging.warning(f"驗證失敗: 未找到文字 '{text}'")
+                return False
+        except Exception as e:
+            logging.error(f"驗證文字存在時發生錯誤: {str(e)}")
+            return False
+    
+    def verify_text_not_exists(self, text: str) -> bool:
+        """驗證頁面不包含特定文字"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            page_source = self.driver.page_source
+            if text not in page_source:
+                logging.info(f"驗證成功: 未找到文字 '{text}'")
+                return True
+            else:
+                logging.warning(f"驗證失敗: 找到文字 '{text}'")
+                return False
+        except Exception as e:
+            logging.error(f"驗證文字不存在時發生錯誤: {str(e)}")
+            return False
+    
+    def verify_element_exists(self, selector: str) -> bool:
+        """驗證元素存在"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            # 解析選擇器
+            selector_type, selector_value = self._parse_selector(selector)
+            wait = WebDriverWait(self.driver, utils.DEFAULT_WAIT_TIME)
+            wait.until(EC.presence_of_element_located((selector_type, selector_value)))
+            logging.info(f"驗證成功: 找到元素 '{selector}'")
+            return True
+        except (NoSuchElementException, TimeoutException):
+            logging.warning(f"驗證失敗: 未找到元素 '{selector}'")
+            return False
+        except Exception as e:
+            logging.error(f"驗證元素存在時發生錯誤: {str(e)}")
+            return False
+    
+    def verify_element_value(self, selector: str, expected_value: str) -> bool:
+        """驗證元素值符合預期"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            # 解析選擇器
+            selector_type, selector_value = self._parse_selector(selector)
+            wait = WebDriverWait(self.driver, utils.DEFAULT_WAIT_TIME)
+            element = wait.until(EC.presence_of_element_located((selector_type, selector_value)))
+            
+            actual_value = element.get_attribute("value") or element.text
+            if actual_value == expected_value:
+                logging.info(f"驗證成功: 元素 '{selector}' 的值為 '{expected_value}'")
+                return True
+            else:
+                logging.warning(f"驗證失敗: 元素 '{selector}' 的值為 '{actual_value}'，預期為 '{expected_value}'")
+                return False
+        except (NoSuchElementException, TimeoutException):
+            logging.warning(f"驗證失敗: 未找到元素 '{selector}'")
+            return False
+        except Exception as e:
+            logging.error(f"驗證元素值時發生錯誤: {str(e)}")
+            return False
+    
+    def verify_count(self, selector: str, expected_count: int) -> bool:
+        """驗證符合選擇器的元素數量"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            # 解析選擇器
+            selector_type, selector_value = self._parse_selector(selector)
+            elements = self.driver.find_elements(selector_type, selector_value)
+            actual_count = len(elements)
+            
+            if actual_count == expected_count:
+                logging.info(f"驗證成功: 找到 {actual_count} 個符合 '{selector}' 的元素")
+                return True
+            else:
+                logging.warning(f"驗證失敗: 找到 {actual_count} 個符合 '{selector}' 的元素，預期為 {expected_count}")
+                return False
+        except Exception as e:
+            logging.error(f"驗證元素數量時發生錯誤: {str(e)}")
+            return False
+    
+    # 等待指令
+    def wait_for_text(self, text: str, max_wait_time: int = None) -> bool:
+        """等待文字出現"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        if max_wait_time is None:
+            max_wait_time = utils.DEFAULT_WAIT_TIME
+        
+        try:
+            wait = WebDriverWait(self.driver, max_wait_time)
+            wait.until(lambda driver: text in driver.page_source)
+            logging.info(f"等待成功: 文字 '{text}' 已出現")
+            return True
+        except TimeoutException:
+            logging.warning(f"等待超時: 文字 '{text}' 未出現")
+            return False
+        except Exception as e:
+            logging.error(f"等待文字出現時發生錯誤: {str(e)}")
+            return False
+    
+    def wait_for_element(self, selector: str, max_wait_time: int = None) -> bool:
+        """等待元素出現"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        if max_wait_time is None:
+            max_wait_time = utils.DEFAULT_WAIT_TIME
+        
+        try:
+            # 解析選擇器
+            selector_type, selector_value = self._parse_selector(selector)
+            wait = WebDriverWait(self.driver, max_wait_time)
+            wait.until(EC.presence_of_element_located((selector_type, selector_value)))
+            logging.info(f"等待成功: 元素 '{selector}' 已出現")
+            return True
+        except TimeoutException:
+            logging.warning(f"等待超時: 元素 '{selector}' 未出現")
+            return False
+        except Exception as e:
+            logging.error(f"等待元素出現時發生錯誤: {str(e)}")
+            return False
+    
+    def wait_for_page_load(self, max_wait_time: int = None) -> bool:
+        """等待頁面完全載入"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        if max_wait_time is None:
+            max_wait_time = utils.DEFAULT_WAIT_TIME
+        
+        try:
+            wait = WebDriverWait(self.driver, max_wait_time)
+            wait.until(lambda driver: driver.execute_script("return document.readyState") == "complete")
+            logging.info("等待成功: 頁面已完全載入")
+            return True
+        except TimeoutException:
+            logging.warning("等待超時: 頁面未完全載入")
+            return False
+        except Exception as e:
+            logging.error(f"等待頁面載入時發生錯誤: {str(e)}")
+            return False
+    
+    # 頁面導航與互動
+    def scroll_to_element(self, selector: str) -> bool:
+        """滾動到指定元素"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            # 解析選擇器
+            selector_type, selector_value = self._parse_selector(selector)
+            element = self.driver.find_element(selector_type, selector_value)
+            
+            self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element)
+            time.sleep(1)  # 等待滾動完成
+            logging.info(f"已滾動到元素 '{selector}'")
+            return True
+        except NoSuchElementException:
+            logging.warning(f"滾動失敗: 未找到元素 '{selector}'")
+            return False
+        except Exception as e:
+            logging.error(f"滾動到元素時發生錯誤: {str(e)}")
+            return False
+    
+    def scroll_to_bottom(self) -> bool:
+        """滾動到頁面底部"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(1)  # 等待滾動完成
+            logging.info("已滾動到頁面底部")
+            return True
+        except Exception as e:
+            logging.error(f"滾動到頁面底部時發生錯誤: {str(e)}")
+            return False
+    
+    def expand(self, selector: str) -> bool:
+        """展開摺疊區域"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            # 解析選擇器
+            selector_type, selector_value = self._parse_selector(selector)
+            element = self.driver.find_element(selector_type, selector_value)
+            
+            # 檢查元素是否已展開
+            is_expanded = element.get_attribute("aria-expanded") == "true"
+            if is_expanded:
+                logging.info(f"元素 '{selector}' 已經是展開狀態")
+                return True
+            
+            # 點擊元素以展開
+            element.click()
+            time.sleep(1)  # 等待展開動畫
+            logging.info(f"已展開元素 '{selector}'")
+            return True
+        except NoSuchElementException:
+            logging.warning(f"展開失敗: 未找到元素 '{selector}'")
+            return False
+        except Exception as e:
+            logging.error(f"展開元素時發生錯誤: {str(e)}")
+            return False
+    
+    # 執行導航序列
+    def execute_nav_sequence(self, commands: List[str]) -> bool:
+        """執行導航序列"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        success = True
+        for cmd_str in commands:
+            parts = cmd_str.split(":", 1)
+            if len(parts) != 2:
+                logging.error(f"無效的導航序列命令: {cmd_str}")
+                success = False
+                continue
+            
+            cmd, params_str = parts
+            params = params_str.split(",")
+            
+            # 執行命令
+            result = self._execute_command(cmd, params)
+            if not result:
+                logging.warning(f"導航序列命令 '{cmd}' 執行失敗")
+                success = False
+        
+        return success
+    
+    # 輔助方法
+    def _parse_selector(self, selector: str) -> Tuple[str, str]:
+        """解析選擇器，支援 CSS 和 XPath"""
+        if selector.startswith("#"):
+            return By.ID, selector[1:]
+        elif selector.startswith("."):
+            return By.CLASS_NAME, selector[1:]
+        elif selector.startswith("//"):
+            return By.XPATH, selector
+        else:
+            return By.CSS_SELECTOR, selector
+    
+    def _execute_command(self, cmd: str, params: List[str]) -> bool:
+        """執行單一命令"""
+        if cmd == "CLICK_BY_TEXT":
+            return self.click_by_text(params[0]) if params else False
+        elif cmd == "CLICK_BY_ID":
+            return self.click_by_id(params[0]) if params else False
+        elif cmd == "WAIT":
+            return self.wait(int(params[0])) if params else False
+        elif cmd == "TYPE":
+            return self.type_text(params[0]) if params else False
+        # 可以根據需要添加更多命令
+        else:
+            logging.warning(f"未知命令: {cmd}")
+            return False
+    
+    def click_by_text(self, text: str) -> bool:
+        """點擊包含指定文字的元素"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            # 嘗試使用不同的方法找到包含文字的元素
+            methods = [
+                # 精確匹配
+                f"//button[text()='{text}']",
+                f"//a[text()='{text}']",
+                f"//input[@value='{text}']",
+                f"//label[text()='{text}']",
+                f"//*[text()='{text}']",
+                
+                # 包含文字
+                f"//button[contains(text(),'{text}')]",
+                f"//a[contains(text(),'{text}')]",
+                f"//input[contains(@value,'{text}')]",
+                f"//label[contains(text(),'{text}')]",
+                f"//*[contains(text(),'{text}')]",
+                
+                # 包含文字的子元素
+                f"//*[.//*[contains(text(),'{text}')]]"
+            ]
+            
+            for xpath in methods:
+                elements = self.driver.find_elements(By.XPATH, xpath)
+                if elements:
+                    for element in elements:
+                        if element.is_displayed() and element.is_enabled():
+                            element.click()
+                            logging.info(f"已點擊包含文字 '{text}' 的元素")
+                            return True
+            
+            logging.warning(f"找不到包含文字 '{text}' 的可點擊元素")
+            return False
+        except Exception as e:
+            logging.error(f"點擊包含文字 '{text}' 的元素時發生錯誤: {str(e)}")
+            return False
+    
+    def wait(self, seconds: int) -> bool:
+        """等待指定秒數"""
+        try:
+            time.sleep(seconds)
+            logging.info(f"已等待 {seconds} 秒")
+            return True
+        except Exception as e:
+            logging.error(f"等待時發生錯誤: {str(e)}")
+            return False
+    
     def close_driver(self) -> None:
         """關閉 WebDriver"""
         if self.driver:

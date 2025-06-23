@@ -8,6 +8,7 @@ import threading
 import logging
 import traceback
 from typing import List, Optional, Tuple, Dict, Any
+from selenium.webdriver.common.by import By
 
 # 導入自定義模塊
 import utils
@@ -205,97 +206,215 @@ class ChromeAutomationTool:
             if not commands:
                 self.add_log("警告: 命令檔案為空或不存在")
             
-            # 步驟 2: 打開本地 HTML 頁面
-            self.update_action("打開本地 HTML 頁面")
-            self.update_step(1)
+            # 執行命令
+            current_step_index = 1
+            in_test_case = False
+            test_case_name = ""
+            nav_sequence_name = ""
             
-            # 從命令中獲取 URL
-            url_path = "web/index.html"  # 預設值
             for cmd, params in commands:
-                if cmd == "OPEN_URL":
-                    url_path = params[0]
-                    break
-            
-            if not self.selenium_handler.open_html_page(url_path):
-                self.add_log(f"錯誤: 打開頁面失敗: {url_path}")
-                self.mark_step_failed(1)
-                self.reset_ui()
-                return
-            
-            # 步驟 3: 登入表單測試
-            self.update_step(2)
-            self.update_action("登入表單測試")
-            self.add_log("測試登入表單")
-            
-            if not self.selenium_handler.test_login_form():
-                self.add_log("錯誤: 登入表單測試失敗")
-                self.mark_step_failed(2)
-            else:
-                self.add_log("登入表單測試成功")
-            
-            # 步驟 4: 資料管理測試
-            self.update_step(3)
-            self.update_action("資料管理測試")
-            self.add_log("測試資料管理功能")
-            
-            if not self.selenium_handler.test_data_management():
-                self.add_log("錯誤: 資料管理測試失敗")
-                self.mark_step_failed(3)
-            else:
-                self.add_log("資料管理測試成功")
-            
-            # 步驟 5: 搜尋功能測試
-            self.update_step(4)
-            self.update_action("搜尋功能測試")
-            self.add_log("測試搜尋功能")
-            
-            if not self.selenium_handler.test_search_function():
-                self.add_log("錯誤: 搜尋功能測試失敗")
-                self.mark_step_failed(4)
-            else:
-                self.add_log("搜尋功能測試成功")
-            
-            # 步驟 6: 互動按鈕測試
-            self.update_step(5)
-            self.update_action("互動按鈕測試")
-            self.add_log("測試互動按鈕")
-            
-            if not self.selenium_handler.test_interactive_buttons():
-                self.add_log("錯誤: 互動按鈕測試失敗")
-                self.mark_step_failed(5)
-            else:
-                self.add_log("互動按鈕測試成功")
-            
-            # 步驟 7: 搜尋關鍵字
-            base_step_index = 6  # 關鍵字搜尋的起始步驟索引
-            
-            # 搜尋每個關鍵字
-            for i, keyword in enumerate(self.keywords):
                 if not self.is_running:
                     self.add_log("使用者停止了自動化測試")
                     break
                 
-                step_index = base_step_index + i
-                self.update_step(step_index)
-                self.update_action(f"搜尋關鍵字: {keyword}")
+                # 處理測試案例
+                if cmd == "TEST_CASE":
+                    in_test_case = True
+                    test_case_name = params[0] if params else "未命名測試案例"
+                    self.add_log(f"開始執行測試案例: {test_case_name}")
+                    self.update_action(f"測試案例: {test_case_name}")
+                    step_text = f"測試案例: {test_case_name}"
+                    step_index = self.add_step(step_text) if self.step_window else current_step_index
+                    self.update_step(step_index)
+                    current_step_index += 1
+                    continue
                 
-                try:
-                    found = self.selenium_handler.search_keyword(keyword)
-                    if found:
-                        self.add_log(f"✓ 找到關鍵字: {keyword}")
-                    else:
-                        self.add_log(f"✗ 未找到關鍵字: {keyword}")
-                        self.mark_step_failed(step_index)
+                # 處理命令
+                self.update_action(f"執行: {cmd}")
+                step_text = f"{cmd}: {params[0] if params else ''}"
+                step_index = current_step_index
+                
+                if self.step_window and cmd != "NAV_SEQUENCE":
+                    step_index = self.add_step(step_text)
+                
+                self.update_step(step_index)
+                self.add_log(f"執行命令: {cmd} {params}")
+                
+                result = False
+                
+                # 執行不同類型的命令
+                if cmd == "OPEN_URL":
+                    url_path = params[0] if params else "web/index.html"
+                    result = self.selenium_handler.open_html_page(url_path)
+                
+                elif cmd == "WAIT":
+                    seconds = int(params[0]) if params and params[0].isdigit() else 1
+                    result = self.selenium_handler.wait(seconds)
+                
+                elif cmd == "REFRESH":
+                    result = self.selenium_handler.refresh_page()
+                
+                elif cmd == "BACK":
+                    result = self.selenium_handler.go_back()
+                
+                elif cmd == "CLICK_BY_TEXT":
+                    text = params[0] if params else ""
+                    result = self.selenium_handler.click_by_text(text)
+                
+                elif cmd == "CLICK_BY_ID":
+                    element_id = params[0] if params else ""
+                    result = self.selenium_handler.click_by_id(element_id)
+                
+                elif cmd == "TYPE":
+                    text = params[0] if params else ""
+                    result = self.selenium_handler.type_text(text)
+                
+                elif cmd == "LOGIN":
+                    username = params[0] if len(params) > 0 else ""
+                    password = params[1] if len(params) > 1 else ""
                     
-                    # 給使用者時間觀察結果
-                    time.sleep(2)
-                except Exception as e:
-                    self.add_log(f"搜尋關鍵字 '{keyword}' 時發生錯誤: {str(e)}")
+                    # 找到用戶名輸入框
+                    username_input = self.selenium_handler.driver.find_element(By.ID, "username")
+                    username_input.clear()
+                    username_input.send_keys(username)
+                    
+                    # 找到密碼輸入框
+                    password_input = self.selenium_handler.driver.find_element(By.ID, "password")
+                    password_input.clear()
+                    password_input.send_keys(password)
+                    
+                    result = True
+                
+                # 驗證指令
+                elif cmd == "VERIFY_TEXT_EXISTS":
+                    text = params[0] if params else ""
+                    result = self.selenium_handler.verify_text_exists(text)
+                
+                elif cmd == "VERIFY_TEXT_NOT_EXISTS":
+                    text = params[0] if params else ""
+                    result = self.selenium_handler.verify_text_not_exists(text)
+                
+                elif cmd == "VERIFY_ELEMENT_EXISTS":
+                    selector = params[0] if params else ""
+                    result = self.selenium_handler.verify_element_exists(selector)
+                
+                elif cmd == "VERIFY_ELEMENT_VALUE":
+                    selector = params[0] if len(params) > 0 else ""
+                    expected_value = params[1] if len(params) > 1 else ""
+                    result = self.selenium_handler.verify_element_value(selector, expected_value)
+                
+                elif cmd == "VERIFY_COUNT":
+                    selector = params[0] if len(params) > 0 else ""
+                    expected_count = int(params[1]) if len(params) > 1 and params[1].isdigit() else 0
+                    result = self.selenium_handler.verify_count(selector, expected_count)
+                
+                # 等待指令
+                elif cmd == "WAIT_FOR_TEXT":
+                    text = params[0] if len(params) > 0 else ""
+                    max_wait_time = int(params[1]) if len(params) > 1 and params[1].isdigit() else None
+                    result = self.selenium_handler.wait_for_text(text, max_wait_time)
+                
+                elif cmd == "WAIT_FOR_ELEMENT":
+                    selector = params[0] if len(params) > 0 else ""
+                    max_wait_time = int(params[1]) if len(params) > 1 and params[1].isdigit() else None
+                    result = self.selenium_handler.wait_for_element(selector, max_wait_time)
+                
+                elif cmd == "WAIT_FOR_PAGE_LOAD":
+                    max_wait_time = int(params[0]) if params and params[0].isdigit() else None
+                    result = self.selenium_handler.wait_for_page_load(max_wait_time)
+                
+                # 頁面導航與互動
+                elif cmd == "SCROLL_TO_ELEMENT":
+                    selector = params[0] if params else ""
+                    result = self.selenium_handler.scroll_to_element(selector)
+                
+                elif cmd == "SCROLL_TO_BOTTOM":
+                    result = self.selenium_handler.scroll_to_bottom()
+                
+                elif cmd == "EXPAND":
+                    selector = params[0] if params else ""
+                    result = self.selenium_handler.expand(selector)
+                
+                # 導航序列
+                elif cmd == "NAV_SEQUENCE":
+                    nav_sequence_name = params[0] if params else "導航序列"
+                    nav_commands = params[1:] if len(params) > 1 else []
+                    
+                    self.add_log(f"執行導航序列: {nav_sequence_name}")
+                    step_text = f"導航序列: {nav_sequence_name}"
+                    
+                    if self.step_window:
+                        step_index = self.add_step(step_text)
+                    
+                    self.update_step(step_index)
+                    result = self.selenium_handler.execute_nav_sequence(nav_commands)
+                
+                # 基本測試功能
+                elif cmd == "test_login_form":
+                    result = self.selenium_handler.test_login_form()
+                
+                elif cmd == "test_data_management":
+                    result = self.selenium_handler.test_data_management()
+                
+                elif cmd == "test_search_function":
+                    result = self.selenium_handler.test_search_function()
+                
+                elif cmd == "test_interactive_buttons":
+                    result = self.selenium_handler.test_interactive_buttons()
+                
+                # 處理結果
+                if result:
+                    self.add_log(f"命令執行成功: {cmd}")
+                else:
+                    self.add_log(f"命令執行失敗: {cmd}")
                     self.mark_step_failed(step_index)
+                
+                current_step_index += 1
+            
+            # 搜尋關鍵字
+            if self.keywords:
+                base_step_index = current_step_index
+                self.add_log("開始搜尋關鍵字")
+                
+                # 搜尋每個關鍵字
+                for i, keyword in enumerate(self.keywords):
+                    if not self.is_running:
+                        self.add_log("使用者停止了自動化測試")
+                        break
+                    
+                    step_index = base_step_index + i
+                    step_text = f"搜尋關鍵字: {keyword}"
+                    
+                    if self.step_window:
+                        step_index = self.add_step(step_text)
+                    
+                    self.update_step(step_index)
+                    self.update_action(f"搜尋關鍵字: {keyword}")
+                    
+                    try:
+                        found = self.selenium_handler.search_keyword(keyword)
+                        if found:
+                            self.add_log(f"✓ 找到關鍵字: {keyword}")
+                        else:
+                            self.add_log(f"✗ 未找到關鍵字: {keyword}")
+                            self.mark_step_failed(step_index)
+                        
+                        # 給使用者時間觀察結果
+                        time.sleep(2)
+                    except Exception as e:
+                        self.add_log(f"搜尋關鍵字 '{keyword}' 時發生錯誤: {str(e)}")
+                        self.mark_step_failed(step_index)
+                
+                current_step_index = base_step_index + len(self.keywords)
             
             # 完成測試
-            final_step = base_step_index + len(self.keywords)
-            self.update_step(final_step)
+            final_step_text = "測試完成"
+            final_step_index = current_step_index
+            
+            if self.step_window:
+                final_step_index = self.add_step(final_step_text)
+            
+            self.update_step(final_step_index)
             self.update_action("測試完成")
             self.add_log("自動化測試完成！")
             

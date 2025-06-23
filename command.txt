@@ -55,8 +55,98 @@ WAIT = 1
 CLICK_BY_TEXT = 計數: 0
 WAIT = 1
 
+# 產品導航與資訊驗證
+TEST_CASE = 產品資訊驗證
+OPEN_URL = web/advanced.html
+WAIT_FOR_PAGE_LOAD
+WAIT = 1
+
+# 登入測試
+CLICK_BY_ID = username
+TYPE = admin
+CLICK_BY_ID = password
+TYPE = admin123
+CLICK_BY_ID = login-button
+WAIT_FOR_TEXT = 登入成功||5
+VERIFY_TEXT_EXISTS = 歡迎 admin
+
+# 多層次導航
+NAV_SEQUENCE_START = 產品導航
+  CLICK_BY_ID = electronics-link
+  WAIT_FOR_ELEMENT = #product-grid||5
+  CLICK_BY_ID = laptops-link
+  WAIT = 2
+NAV_SEQUENCE_END
+
+# 篩選與排序
+CLICK_BY_ID = category-filter
+CLICK_BY_TEXT = 筆記型電腦
+CLICK_BY_ID = sort-by
+CLICK_BY_TEXT = 價格由高到低
+CLICK_BY_ID = apply-filter
+WAIT = 2
+
+# 選擇產品
+CLICK_BY_TEXT = 查看詳情
+WAIT_FOR_ELEMENT = #product-title||5
+
+# 驗證產品資訊
+VERIFY_TEXT_EXISTS = ROG Strix G15
+EXPAND = #tech-specs-btn
+WAIT = 1
+VERIFY_TEXT_EXISTS = 處理器: Intel Core i7-11800H
+
+# 展開評論區
+EXPAND = #user-reviews-btn
+WAIT = 1
+VERIFY_TEXT_EXISTS = 王小明
+
+# 返回產品列表
+CLICK_BY_ID = back-to-products
+WAIT = 1
+
+# 訂單處理流程測試
+TEST_CASE = 訂單處理流程
+CLICK_BY_ID = about-link
+WAIT_FOR_ELEMENT = #order-wizard||5
+
+# 步驟1: 選擇產品
+CLICK_BY_ID = order-product
+CLICK_BY_TEXT = ROG Strix G15
+CLICK_BY_ID = next-step1
+WAIT = 1
+
+# 步驟2: 填寫資料
+CLICK_BY_ID = customer-name
+TYPE = 測試使用者
+CLICK_BY_ID = customer-email
+TYPE = test@example.com
+CLICK_BY_ID = customer-address
+TYPE = 台北市測試區123號
+CLICK_BY_ID = next-step2
+WAIT = 1
+
+# 步驟3: 確認訂單
+VERIFY_TEXT_EXISTS = 測試使用者
+VERIFY_TEXT_EXISTS = test@example.com
+CLICK_BY_ID = submit-order
+WAIT = 1
+
+# 步驟4: 等待處理完成
+WAIT_FOR_TEXT = 完成||5
+VERIFY_TEXT_EXISTS = 訂單編號
+VERIFY_TEXT_EXISTS = 感謝您的購買
+
+# 無限滾動測試
+TEST_CASE = 無限滾動測試
+SCROLL_TO_ELEMENT = #infinite-scroll-section
+WAIT = 1
+SCROLL_TO_BOTTOM
+WAIT = 2
+VERIFY_TEXT_EXISTS = 項目 20
+
 挪威國家廣播公司
 台灣的戰貓
 記者洛特
-需要有8條命才能存活
+需要有9條命才能存活
 有違挪威的一中政策 

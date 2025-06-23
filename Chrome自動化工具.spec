@@ -5,7 +5,7 @@ a = Analysis(
     ['chrome_automation_tool.py'],
     pathex=[],
     binaries=[],
-    datas=[('web', 'web'), ('icon.ico', '.')],
+    datas=[('web', 'web'), ('icon.ico', '.'), ('command.txt', '.')],
     hiddenimports=['utils', 'step_window', 'selenium_handler'],
     hookspath=[],
     hooksconfig={},
