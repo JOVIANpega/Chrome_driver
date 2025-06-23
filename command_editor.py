@@ -8,12 +8,10 @@ import logging
 import utils
 
 class CommandEditor:
-    def __init__(self, parent: tk.Tk, on_execute_commands=None) -> None:
-        """初始化命令编辑器"""
-        self.window = tk.Toplevel(parent)
-        self.window.title("命令编辑器")
-        self.window.geometry("800x600")
-        self.window.protocol("WM_DELETE_WINDOW", self.hide_window)  # 关闭时隐藏而非销毁
+    def __init__(self, parent_frame, on_execute_commands=None) -> None:
+        """初始化命令编辑器（作为框架而非窗口）"""
+        # 主框架
+        self.frame = parent_frame
         
         # 当前命令列表
         self.commands = []
@@ -26,26 +24,24 @@ class CommandEditor:
         
         # 加载现有命令
         self.load_commands_from_file()
-        
-        # 显示窗口
-        self.window.update()
-        self.window.deiconify()
     
     def create_ui(self) -> None:
         """创建用户界面"""
-        # 主框架
-        main_frame = ttk.Frame(self.window, padding="10")
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        # 清空框架中的所有小部件
+        for widget in self.frame.winfo_children():
+            widget.destroy()
         
-        # 命令输入区域
-        input_frame = ttk.LabelFrame(main_frame, text="添加命令", padding="10")
-        input_frame.pack(fill=tk.X, pady=5)
+        # 创建顶部区域
+        top_frame = ttk.Frame(self.frame)
+        top_frame.pack(fill=tk.X, padx=10, pady=10)
         
-        # 命令类型选择
-        cmd_frame = ttk.Frame(input_frame)
-        cmd_frame.pack(fill=tk.X, pady=5)
+        # 左侧简化控制区域
+        control_frame = ttk.LabelFrame(top_frame, text="添加命令")
+        control_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
         
-        ttk.Label(cmd_frame, text="命令类型:").pack(side=tk.LEFT, padx=(0, 5))
+        # 命令类型和命令选择 - 简化布局
+        cmd_select_frame = ttk.Frame(control_frame)
+        cmd_select_frame.pack(fill=tk.X, padx=10, pady=10)
         
         # 将命令按类型分组
         self.cmd_categories = {}
@@ -54,138 +50,243 @@ class CommandEditor:
                 self.cmd_categories[cmd_type] = []
             self.cmd_categories[cmd_type].append(cmd)
         
-        # 命令类型下拉菜单
+        # 命令类型下拉菜单 - 使用更直观的标签
+        ttk.Label(cmd_select_frame, text="选择命令类型:").grid(row=0, column=0, sticky=tk.W, columnspan=2, pady=(0, 5))
+        
         self.cmd_type_var = tk.StringVar()
-        self.cmd_type_combobox = ttk.Combobox(cmd_frame, textvariable=self.cmd_type_var, width=20)
-        self.cmd_type_combobox["values"] = list(self.cmd_categories.keys())
-        self.cmd_type_combobox.pack(side=tk.LEFT, padx=5)
+        self.cmd_type_combobox = ttk.Combobox(cmd_select_frame, textvariable=self.cmd_type_var, width=20)
+        self.cmd_type_combobox["values"] = [
+            "basic - 基本操作",
+            "verify - 验证",
+            "wait - 等待",
+            "navigation - 导航",
+            "test - 测试",
+            "fuzzy - 模糊匹配"
+        ]
+        self.cmd_type_combobox.grid(row=1, column=0, columnspan=2, sticky=tk.W+tk.E, pady=(0, 10))
         self.cmd_type_combobox.bind("<<ComboboxSelected>>", self.on_cmd_type_selected)
         
-        # 命令下拉菜单
-        ttk.Label(cmd_frame, text="命令:").pack(side=tk.LEFT, padx=(10, 5))
+        # 命令下拉菜单 - 使用更直观的标签
+        ttk.Label(cmd_select_frame, text="选择具体命令:").grid(row=2, column=0, sticky=tk.W, columnspan=2, pady=(0, 5))
+        
         self.cmd_var = tk.StringVar()
-        self.cmd_combobox = ttk.Combobox(cmd_frame, textvariable=self.cmd_var, width=25)
-        self.cmd_combobox.pack(side=tk.LEFT, padx=5)
+        self.cmd_combobox = ttk.Combobox(cmd_select_frame, textvariable=self.cmd_var, width=20)
+        self.cmd_combobox.grid(row=3, column=0, columnspan=2, sticky=tk.W+tk.E, pady=(0, 10))
         
-        # 参数输入
-        param_frame = ttk.Frame(input_frame)
-        param_frame.pack(fill=tk.X, pady=5)
+        # 参数输入 - 简化布局，添加示例
+        ttk.Label(cmd_select_frame, text="输入参数:").grid(row=4, column=0, sticky=tk.W, columnspan=2, pady=(0, 5))
         
-        ttk.Label(param_frame, text="参数:").pack(side=tk.LEFT, padx=(0, 5))
-        self.param_entry = ttk.Entry(param_frame, width=50)
-        self.param_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+        self.param_entry = ttk.Entry(cmd_select_frame, width=40)
+        self.param_entry.grid(row=5, column=0, columnspan=2, sticky=tk.W+tk.E, pady=(0, 5))
         
-        # 多参数区分说明
-        ttk.Label(param_frame, text="(多个参数用 || 分隔)").pack(side=tk.LEFT, padx=5)
+        # 示例文本标签 - 用于显示所选命令的参数示例
+        self.example_var = tk.StringVar(value="示例: 选择命令后显示参数格式")
+        example_label = ttk.Label(cmd_select_frame, textvariable=self.example_var, font=("Arial", 9, "italic"), foreground="blue")
+        example_label.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(0, 10))
         
-        # 按钮区域
-        button_frame = ttk.Frame(input_frame)
-        button_frame.pack(fill=tk.X, pady=5)
+        # 命令描述标签 - 显示当前选择命令的用途
+        self.desc_var = tk.StringVar(value="请选择一个命令类型和具体命令")
+        desc_label = ttk.Label(cmd_select_frame, textvariable=self.desc_var, wraplength=300, font=("Arial", 9))
+        desc_label.grid(row=7, column=0, columnspan=2, sticky=tk.W, pady=(0, 10))
         
-        self.add_cmd_button = ttk.Button(button_frame, text="添加命令", command=self.add_command)
-        self.add_cmd_button.pack(side=tk.LEFT, padx=5)
+        # 添加命令按钮 - 使用更醒目的样式
+        self.add_cmd_button = ttk.Button(cmd_select_frame, text="添加到命令列表", command=self.add_command, width=20)
+        self.add_cmd_button.grid(row=8, column=0, columnspan=2, pady=(5, 0))
         
-        self.add_test_case_button = ttk.Button(button_frame, text="添加TEST_CASE分隔线", command=self.add_test_case)
-        self.add_test_case_button.pack(side=tk.LEFT, padx=5)
+        # 右侧模板区域
+        template_frame = ttk.LabelFrame(top_frame, text="快速模板")
+        template_frame.pack(side=tk.RIGHT, fill=tk.BOTH, padx=(5, 0))
         
-        self.add_nav_start_button = ttk.Button(button_frame, text="添加导航序列开始", command=self.add_nav_sequence_start)
-        self.add_nav_start_button.pack(side=tk.LEFT, padx=5)
+        # 添加模板说明标签
+        template_desc = "点击下方按钮快速添加预设测试模板"
+        template_label = ttk.Label(template_frame, text=template_desc, font=("Arial", 9, "italic"))
+        template_label.pack(padx=10, pady=(5, 2))
         
-        self.add_nav_end_button = ttk.Button(button_frame, text="添加导航序列结束", command=self.add_nav_sequence_end)
-        self.add_nav_end_button.pack(side=tk.LEFT, padx=5)
+        # 模板按钮
+        templates_grid = ttk.Frame(template_frame)
+        templates_grid.pack(padx=10, pady=5)
         
-        self.add_comment_button = ttk.Button(button_frame, text="添加注释", command=self.add_comment)
-        self.add_comment_button.pack(side=tk.LEFT, padx=5)
+        # 第一行模板
+        self.create_template_button(templates_grid, "登录流程", self.apply_login_template, 0, 0)
+        self.create_template_button(templates_grid, "表单填写", self.apply_form_template, 0, 1)
+        self.create_template_button(templates_grid, "页面导航", self.apply_navigation_template, 0, 2)
         
-        # 模板下拉菜单
-        template_frame = ttk.Frame(input_frame)
-        template_frame.pack(fill=tk.X, pady=5)
+        # 第二行模板
+        self.create_template_button(templates_grid, "搜索测试", self.apply_search_template, 1, 0)
+        self.create_template_button(templates_grid, "数据验证", self.apply_data_validation_template, 1, 1)
+        self.create_template_button(templates_grid, "弹窗测试", self.apply_popup_template, 1, 2)
         
-        ttk.Label(template_frame, text="常用模板:").pack(side=tk.LEFT, padx=(0, 5))
-        self.template_var = tk.StringVar()
-        self.template_combobox = ttk.Combobox(template_frame, textvariable=self.template_var, width=30)
-        self.template_combobox["values"] = ["登录流程", "表单填写", "页面导航", "搜索测试"]
-        self.template_combobox.pack(side=tk.LEFT, padx=5)
-        
-        self.apply_template_button = ttk.Button(template_frame, text="应用模板", command=self.apply_template)
-        self.apply_template_button.pack(side=tk.LEFT, padx=5)
+        # 第三行模板
+        self.create_template_button(templates_grid, "响应性测试", self.apply_responsive_template, 2, 0)
+        self.create_template_button(templates_grid, "分页测试", self.apply_pagination_template, 2, 1)
+        self.create_template_button(templates_grid, "性能测试", self.apply_performance_template, 2, 2)
         
         # 命令列表区域
-        cmd_list_frame = ttk.LabelFrame(main_frame, text="当前命令列表", padding="10")
-        cmd_list_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        list_frame = ttk.LabelFrame(self.frame, text="命令列表")
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(5, 10))
         
-        # 命令列表框 - 修改为支持多选
-        self.cmd_listbox = tk.Listbox(cmd_list_frame, font=("Courier New", 10), selectmode=tk.EXTENDED)
+        # 命令列表框和滚动条
+        list_container = ttk.Frame(list_frame)
+        list_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        self.cmd_listbox = tk.Listbox(list_container, font=("Courier New", 10), selectmode=tk.EXTENDED, bg="white")
         self.cmd_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
-        # 滚动条
-        scrollbar = ttk.Scrollbar(cmd_list_frame, orient=tk.VERTICAL, command=self.cmd_listbox.yview)
+        scrollbar = ttk.Scrollbar(list_container, orient=tk.VERTICAL, command=self.cmd_listbox.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.cmd_listbox.config(yscrollcommand=scrollbar.set)
         
+        # 命令操作按钮区域
+        button_frame = ttk.Frame(self.frame)
+        button_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
+        
+        # 文件操作按钮
+        file_frame = ttk.Frame(button_frame)
+        file_frame.pack(side=tk.LEFT)
+        
+        self.save_button = ttk.Button(file_frame, text="保存", command=self.save_commands)
+        self.save_button.pack(side=tk.LEFT, padx=2)
+        
+        self.load_button = ttk.Button(file_frame, text="加载", command=self.load_commands_from_file)
+        self.load_button.pack(side=tk.LEFT, padx=2)
+        
+        self.execute_button = ttk.Button(file_frame, text="执行", command=self.execute_commands)
+        self.execute_button.pack(side=tk.LEFT, padx=2)
+        
         # 命令操作按钮
-        cmd_op_frame = ttk.Frame(main_frame)
-        cmd_op_frame.pack(fill=tk.X, pady=5)
+        cmd_button_frame = ttk.Frame(button_frame)
+        cmd_button_frame.pack(side=tk.RIGHT)
         
-        self.move_up_button = ttk.Button(cmd_op_frame, text="上移", command=self.move_command_up)
-        self.move_up_button.pack(side=tk.LEFT, padx=5)
+        self.move_up_button = ttk.Button(cmd_button_frame, text="上移", command=self.move_command_up)
+        self.move_up_button.pack(side=tk.LEFT, padx=2)
         
-        self.move_down_button = ttk.Button(cmd_op_frame, text="下移", command=self.move_command_down)
-        self.move_down_button.pack(side=tk.LEFT, padx=5)
+        self.move_down_button = ttk.Button(cmd_button_frame, text="下移", command=self.move_command_down)
+        self.move_down_button.pack(side=tk.LEFT, padx=2)
         
-        self.move_to_top_button = ttk.Button(cmd_op_frame, text="移至顶部", command=self.move_command_to_top)
-        self.move_to_top_button.pack(side=tk.LEFT, padx=5)
+        self.edit_button = ttk.Button(cmd_button_frame, text="编辑", command=self.edit_command)
+        self.edit_button.pack(side=tk.LEFT, padx=2)
         
-        self.move_to_bottom_button = ttk.Button(cmd_op_frame, text="移至底部", command=self.move_command_to_bottom)
-        self.move_to_bottom_button.pack(side=tk.LEFT, padx=5)
+        self.delete_button = ttk.Button(cmd_button_frame, text="删除", command=self.delete_command)
+        self.delete_button.pack(side=tk.LEFT, padx=2)
         
-        self.edit_button = ttk.Button(cmd_op_frame, text="编辑", command=self.edit_command)
-        self.edit_button.pack(side=tk.LEFT, padx=5)
-        
-        self.delete_button = ttk.Button(cmd_op_frame, text="删除", command=self.delete_command)
-        self.delete_button.pack(side=tk.LEFT, padx=5)
-        
-        self.clear_button = ttk.Button(cmd_op_frame, text="清空所有", command=self.clear_commands)
-        self.clear_button.pack(side=tk.LEFT, padx=5)
-        
-        # 添加帮助按钮
-        self.help_button = ttk.Button(cmd_op_frame, text="帮助", command=self.show_help)
-        self.help_button.pack(side=tk.RIGHT, padx=5)
-        
-        # 底部按钮区域
-        bottom_frame = ttk.Frame(main_frame)
-        bottom_frame.pack(fill=tk.X, pady=10)
-        
-        self.save_button = ttk.Button(bottom_frame, text="保存到command.txt", command=self.save_commands)
-        self.save_button.pack(side=tk.LEFT, padx=5)
-        
-        self.load_button = ttk.Button(bottom_frame, text="从文件加载", command=self.load_commands_from_file)
-        self.load_button.pack(side=tk.LEFT, padx=5)
-        
-        self.execute_button = ttk.Button(bottom_frame, text="执行这些命令", command=self.execute_commands)
-        self.execute_button.pack(side=tk.RIGHT, padx=5)
-        
-        # 键盘快捷键
-        self.window.bind("<Control-s>", lambda event: self.save_commands())
-        self.window.bind("<Control-o>", lambda event: self.load_commands_from_file())
-        self.window.bind("<Control-e>", lambda event: self.execute_commands())
-        self.window.bind("<Delete>", lambda event: self.delete_command())
+        self.clear_button = ttk.Button(cmd_button_frame, text="清空", command=self.clear_commands)
+        self.clear_button.pack(side=tk.LEFT, padx=2)
         
         # 初始化类型选择
         if self.cmd_categories:
-            first_type = list(self.cmd_categories.keys())[0]
-            self.cmd_type_var.set(first_type)
-            self.cmd_combobox["values"] = sorted(self.cmd_categories[first_type])
-            if self.cmd_categories[first_type]:
-                self.cmd_combobox.current(0)
+            self.cmd_type_combobox.current(0)
+            self.on_cmd_type_selected(None)
+        
+        # 绑定命令选择事件，更新示例和描述
+        self.cmd_combobox.bind("<<ComboboxSelected>>", self.on_command_selected)
+        
+        # 键盘快捷键
+        self.frame.bind("<Control-s>", lambda event: self.save_commands())
+        self.frame.bind("<Control-o>", lambda event: self.load_commands_from_file())
+        self.frame.bind("<Control-e>", lambda event: self.execute_commands())
+        self.frame.bind("<Delete>", lambda event: self.delete_command())
+    
+    def on_command_selected(self, event) -> None:
+        """当命令被选择时更新示例和描述"""
+        cmd = self.cmd_var.get()
+        if not cmd:
+            return
+            
+        # 根据命令类型设置示例和描述
+        examples = {
+            # 基本操作命令示例
+            "OPEN_URL": ("网址", "示例: web/index.html"),
+            "WAIT": ("等待秒数", "示例: 2"),
+            "CLICK_BY_TEXT": ("文本内容", "示例: 登录"),
+            "CLICK_BY_ID": ("元素ID", "示例: login-button"),
+            "TYPE": ("要输入的文本", "示例: admin"),
+            
+            # 验证命令示例
+            "VERIFY_TEXT_EXISTS": ("要验证的文本", "示例: 登录成功"),
+            "VERIFY_ELEMENT_EXISTS": ("元素ID或选择器", "示例: login-form"),
+            "VERIFY_COUNT": ("选择器||预期数量", "示例: .item||5"),
+            
+            # 等待命令示例
+            "WAIT_FOR_TEXT": ("要等待的文本||最长等待秒数", "示例: 加载完成||10"),
+            "WAIT_FOR_ELEMENT": ("元素选择器||最长等待秒数", "示例: #submit-button||5"),
+            "WAIT_FOR_PAGE_LOAD": ("无需参数", ""),
+            
+            # 测试命令示例
+            "TEST_CASE": ("测试用例名称", "示例: 登录功能测试"),
+            
+            # 模糊匹配命令示例
+            "VERIFY_TEXT_CONTAINS": ("部分文本", "示例: 成功"),
+            "VERIFY_TEXT_PATTERN": ("正则表达式", "示例: 用户\\d+"),
+            "VERIFY_TEXT_SIMILAR": ("相似文本||相似度阈值", "示例: 登录成功||0.8"),
+            
+            # 导航命令示例
+            "SCROLL_TO_ELEMENT": ("元素ID或选择器", "示例: footer"),
+            "SCROLL_TO_BOTTOM": ("无需参数", ""),
+        }
+        
+        descriptions = {
+            # 基本操作命令描述
+            "OPEN_URL": "打开指定网址",
+            "WAIT": "等待指定秒数",
+            "CLICK_BY_TEXT": "点击包含指定文本的元素",
+            "CLICK_BY_ID": "点击指定ID的元素",
+            "TYPE": "在当前焦点元素中输入文本",
+            
+            # 验证命令描述
+            "VERIFY_TEXT_EXISTS": "验证页面中存在指定文本",
+            "VERIFY_ELEMENT_EXISTS": "验证页面中存在指定元素",
+            "VERIFY_COUNT": "验证页面中符合选择器的元素数量",
+            
+            # 等待命令描述
+            "WAIT_FOR_TEXT": "等待指定文本出现，最长等待时间为指定秒数",
+            "WAIT_FOR_ELEMENT": "等待指定元素出现，最长等待时间为指定秒数",
+            "WAIT_FOR_PAGE_LOAD": "等待页面完全加载",
+            
+            # 测试命令描述
+            "TEST_CASE": "开始一个新的测试用例，需要提供测试用例名称",
+            
+            # 模糊匹配命令描述
+            "VERIFY_TEXT_CONTAINS": "验证页面中包含指定的部分文本",
+            "VERIFY_TEXT_PATTERN": "使用正则表达式验证页面文本",
+            "VERIFY_TEXT_SIMILAR": "验证页面中有与指定文本相似的内容，可设置相似度阈值(0.0-1.0)",
+            
+            # 导航命令描述
+            "SCROLL_TO_ELEMENT": "滚动页面直到指定元素可见",
+            "SCROLL_TO_BOTTOM": "滚动到页面底部",
+        }
+        
+        # 更新示例和描述
+        if cmd in examples:
+            param_name, example = examples[cmd]
+            if example:
+                self.example_var.set(f"参数格式: {param_name}\n{example}")
+            else:
+                self.example_var.set("此命令不需要参数")
+        else:
+            self.example_var.set("示例: 选择命令后显示参数格式")
+            
+        if cmd in descriptions:
+            self.desc_var.set(descriptions[cmd])
+        else:
+            self.desc_var.set("请选择一个命令")
+    
+    def create_template_button(self, parent, text, command, row, column) -> None:
+        """创建模板按钮"""
+        btn = ttk.Button(parent, text=text, command=command, width=12)
+        btn.grid(row=row, column=column, padx=3, pady=3)
     
     def on_cmd_type_selected(self, event) -> None:
         """命令类型被选择时更新命令下拉菜单"""
-        cmd_type = self.cmd_type_var.get()
+        cmd_type_full = self.cmd_type_var.get()
+        # 从显示文本中提取命令类型
+        cmd_type = cmd_type_full.split(" - ")[0] if " - " in cmd_type_full else cmd_type_full
+        
         if cmd_type in self.cmd_categories:
             self.cmd_combobox["values"] = sorted(self.cmd_categories[cmd_type])
             if self.cmd_categories[cmd_type]:
                 self.cmd_combobox.current(0)
+                # 触发命令选择事件更新示例
+                self.on_command_selected(None)
     
     def add_command(self) -> None:
         """添加命令到列表"""
@@ -193,7 +294,12 @@ class CommandEditor:
         params = self.param_entry.get()
         
         if not cmd:
-            messagebox.showwarning("警告", "请选择命令类型和命令")
+            messagebox.showwarning("提示", "请选择命令")
+            return
+        
+        # 特殊处理TEST_CASE
+        if cmd == "TEST_CASE" and not params:
+            messagebox.showwarning("提示", "TEST_CASE命令需要提供测试案例名称")
             return
         
         # 格式化显示
@@ -206,79 +312,6 @@ class CommandEditor:
         
         # 保存命令
         self.commands.append((cmd, params))
-        
-        # 清空参数输入框
-        self.param_entry.delete(0, tk.END)
-    
-    def add_test_case(self) -> None:
-        """添加TEST_CASE分隔线"""
-        params = self.param_entry.get()
-        cmd = "TEST_CASE"
-        
-        if not params:
-            messagebox.showwarning("警告", "请输入测试案例名称")
-            return
-        
-        # 格式化显示
-        display_text = f"{len(self.commands) + 1}. {cmd} = {params}"
-        
-        # 添加到列表框
-        self.cmd_listbox.insert(tk.END, display_text)
-        
-        # 保存命令
-        self.commands.append((cmd, params))
-        
-        # 清空参数输入框
-        self.param_entry.delete(0, tk.END)
-    
-    def add_nav_sequence_start(self) -> None:
-        """添加导航序列开始标记"""
-        params = self.param_entry.get()
-        cmd = "NAV_SEQUENCE_START"
-        
-        # 格式化显示
-        display_text = f"{len(self.commands) + 1}. {cmd}"
-        if params:
-            display_text += f" = {params}"
-        
-        # 添加到列表框
-        self.cmd_listbox.insert(tk.END, display_text)
-        
-        # 保存命令
-        self.commands.append((cmd, params))
-        
-        # 清空参数输入框
-        self.param_entry.delete(0, tk.END)
-    
-    def add_nav_sequence_end(self) -> None:
-        """添加导航序列结束标记"""
-        cmd = "NAV_SEQUENCE_END"
-        
-        # 格式化显示
-        display_text = f"{len(self.commands) + 1}. {cmd}"
-        
-        # 添加到列表框
-        self.cmd_listbox.insert(tk.END, display_text)
-        
-        # 保存命令
-        self.commands.append((cmd, ""))
-    
-    def add_comment(self) -> None:
-        """添加注释"""
-        comment = self.param_entry.get()
-        
-        if not comment:
-            messagebox.showwarning("警告", "请输入注释内容")
-            return
-        
-        # 格式化显示
-        display_text = f"{len(self.commands) + 1}. # {comment}"
-        
-        # 添加到列表框
-        self.cmd_listbox.insert(tk.END, display_text)
-        
-        # 保存命令 (使用特殊标记 "#" 表示注释)
-        self.commands.append(("#", comment))
         
         # 清空参数输入框
         self.param_entry.delete(0, tk.END)
@@ -335,56 +368,6 @@ class CommandEditor:
             if idx < len(self.commands) - 1:
                 self.cmd_listbox.selection_set(idx+1)
     
-    def move_command_to_top(self) -> None:
-        """将选中命令移至顶部"""
-        selected_indices = self.cmd_listbox.curselection()
-        if not selected_indices:
-            return
-        
-        # 转换为列表并排序
-        indices = sorted(list(selected_indices))
-        selected_commands = [self.commands[idx] for idx in indices]
-        
-        # 从列表中删除选择的命令
-        for idx in reversed(indices):
-            del self.commands[idx]
-        
-        # 将选择的命令插入到顶部
-        for i, cmd in enumerate(selected_commands):
-            self.commands.insert(i, cmd)
-        
-        # 更新显示
-        self.refresh_command_list()
-        
-        # 选中移动后的项
-        for i in range(len(selected_commands)):
-            self.cmd_listbox.selection_set(i)
-    
-    def move_command_to_bottom(self) -> None:
-        """将选中命令移至底部"""
-        selected_indices = self.cmd_listbox.curselection()
-        if not selected_indices:
-            return
-        
-        # 转换为列表并排序
-        indices = sorted(list(selected_indices), reverse=True)
-        selected_commands = [self.commands[idx] for idx in reversed(indices)]
-        
-        # 从列表中删除选择的命令
-        for idx in indices:
-            del self.commands[idx]
-        
-        # 将选择的命令添加到底部
-        self.commands.extend(selected_commands)
-        
-        # 更新显示
-        self.refresh_command_list()
-        
-        # 选中移动后的项
-        start_idx = len(self.commands) - len(selected_commands)
-        for i in range(len(selected_commands)):
-            self.cmd_listbox.selection_set(start_idx + i)
-    
     def edit_command(self) -> None:
         """编辑选中命令"""
         selected = self.cmd_listbox.curselection()
@@ -395,20 +378,21 @@ class CommandEditor:
         index = selected[0]
         cmd, params = self.commands[index]
         
-        # 如果是注释
-        if cmd == "#":
-            self.param_entry.delete(0, tk.END)
-            self.param_entry.insert(0, params)
-            self.delete_command()
-            return
-        
         # 设置UI状态
         if cmd in utils.COMMANDS:
             for cmd_type, cmds in self.cmd_categories.items():
                 if cmd in cmds:
-                    self.cmd_type_var.set(cmd_type)
+                    # 找到对应的显示文本
+                    for display_text in self.cmd_type_combobox["values"]:
+                        if display_text.startswith(cmd_type + " - "):
+                            self.cmd_type_var.set(display_text)
+                            break
+                    else:
+                        self.cmd_type_var.set(cmd_type)
+                    
                     self.cmd_combobox["values"] = sorted(cmds)
                     self.cmd_var.set(cmd)
+                    self.on_command_selected(None)  # 更新命令描述和示例
                     break
         else:
             self.cmd_var.set(cmd)
@@ -451,12 +435,9 @@ class CommandEditor:
         self.cmd_listbox.delete(0, tk.END)
         
         for i, (cmd, params) in enumerate(self.commands):
-            if cmd == "#":
-                display_text = f"{i+1}. # {params}"
-            else:
-                display_text = f"{i+1}. {cmd}"
-                if params:
-                    display_text += f" = {params}"
+            display_text = f"{i+1}. {cmd}"
+            if params:
+                display_text += f" = {params}"
             
             self.cmd_listbox.insert(tk.END, display_text)
     
@@ -468,13 +449,10 @@ class CommandEditor:
                 f.write("# 若参数有多个栏位，用两个直线符号（||）区隔\n\n")
                 
                 for cmd, params in self.commands:
-                    if cmd == "#":
-                        f.write(f"# {params}\n")
+                    if params:
+                        f.write(f"{cmd} = {params}\n")
                     else:
-                        if params:
-                            f.write(f"{cmd} = {params}\n")
-                        else:
-                            f.write(f"{cmd}\n")
+                        f.write(f"{cmd}\n")
             
             messagebox.showinfo("成功", f"命令已保存到 {utils.COMMAND_FILE}")
             logging.info(f"命令已保存到 {utils.COMMAND_FILE}")
@@ -493,12 +471,7 @@ class CommandEditor:
                     
                     for line in f:
                         line = line.strip()
-                        if not line:
-                            continue
-                        
-                        # 处理注释
-                        if line.startswith("#"):
-                            self.commands.append(("#", line[1:].strip()))
+                        if not line or line.startswith("#"):
                             continue
                         
                         # 处理命令
@@ -511,7 +484,6 @@ class CommandEditor:
                             self.commands.append((line.strip(), ""))
                 
                 self.refresh_command_list()
-                messagebox.showinfo("成功", f"已从 {utils.COMMAND_FILE} 加载 {len(self.commands)} 个命令")
                 logging.info(f"已从 {utils.COMMAND_FILE} 加载 {len(self.commands)} 个命令")
             else:
                 messagebox.showinfo("提示", f"找不到 {utils.COMMAND_FILE} 文件")
@@ -520,21 +492,19 @@ class CommandEditor:
             messagebox.showerror("错误", f"加载命令时发生错误: {str(e)}")
             logging.error(f"加载命令时发生错误: {str(e)}")
     
-    def apply_template(self) -> None:
-        """应用预设模板"""
-        template = self.template_var.get()
-        
-        if not template:
+    def execute_commands(self) -> None:
+        """执行当前命令列表"""
+        if not self.commands:
+            messagebox.showwarning("提示", "命令列表为空，无法执行")
             return
         
-        if template == "登录流程":
-            self.apply_login_template()
-        elif template == "表单填写":
-            self.apply_form_template()
-        elif template == "页面导航":
-            self.apply_navigation_template()
-        elif template == "搜索测试":
-            self.apply_search_template()
+        if self.on_execute_commands:
+            # 先保存命令
+            self.save_commands()
+            # 调用回调函数
+            self.on_execute_commands()
+        else:
+            messagebox.showinfo("提示", "已保存命令，但未设置执行回调函数")
     
     def apply_login_template(self) -> None:
         """应用登录流程模板"""
@@ -551,7 +521,7 @@ class CommandEditor:
             ("VERIFY_TEXT_EXISTS", "欢迎 admin")
         ]
         
-        if messagebox.askyesno("确认", "是否添加登录流程模板？这将在当前命令列表末尾添加10条新命令。"):
+        if messagebox.askyesno("确认", "是否添加登录流程模板？"):
             self.commands.extend(new_commands)
             self.refresh_command_list()
     
@@ -572,7 +542,7 @@ class CommandEditor:
             ("VERIFY_TEXT_EXISTS", "测试商品")
         ]
         
-        if messagebox.askyesno("确认", "是否添加表单填写模板？这将在当前命令列表末尾添加12条新命令。"):
+        if messagebox.askyesno("确认", "是否添加表单填写模板？"):
             self.commands.extend(new_commands)
             self.refresh_command_list()
     
@@ -593,7 +563,7 @@ class CommandEditor:
             ("VERIFY_TEXT_EXISTS", "ROG Strix G15")
         ]
         
-        if messagebox.askyesno("确认", "是否添加页面导航模板？这将在当前命令列表末尾添加12条新命令。"):
+        if messagebox.askyesno("确认", "是否添加页面导航模板？"):
             self.commands.extend(new_commands)
             self.refresh_command_list()
     
@@ -610,70 +580,104 @@ class CommandEditor:
             ("VERIFY_TEXT_EXISTS", "找到关键字")
         ]
         
-        if messagebox.askyesno("确认", "是否添加搜索测试模板？这将在当前命令列表末尾添加8条新命令。"):
+        if messagebox.askyesno("确认", "是否添加搜索测试模板？"):
             self.commands.extend(new_commands)
             self.refresh_command_list()
     
-    def execute_commands(self) -> None:
-        """执行当前命令列表"""
-        if not self.commands:
-            messagebox.showwarning("警告", "命令列表为空，无法执行")
-            return
+    def apply_data_validation_template(self) -> None:
+        """应用数据验证模板"""
+        new_commands = [
+            ("TEST_CASE", "数据验证测试"),
+            ("OPEN_URL", "web/index.html"),
+            ("WAIT_FOR_PAGE_LOAD", ""),
+            ("CLICK_BY_ID", "validation-form"),
+            ("CLICK_BY_ID", "email-field"),
+            ("TYPE", "invalid-email"),
+            ("CLICK_BY_ID", "submit-button"),
+            ("WAIT", "1"),
+            ("VERIFY_TEXT_EXISTS", "请输入有效的电子邮件地址"),
+            ("CLICK_BY_ID", "email-field"),
+            ("TYPE", "valid@example.com"),
+            ("CLICK_BY_ID", "submit-button"),
+            ("WAIT", "1"),
+            ("VERIFY_TEXT_EXISTS", "表单提交成功")
+        ]
         
-        if self.on_execute_commands:
-            # 先保存命令
-            self.save_commands()
-            # 调用回调函数
-            self.on_execute_commands()
-        else:
-            messagebox.showinfo("提示", "已保存命令，但未设置执行回调函数")
+        if messagebox.askyesno("确认", "是否添加数据验证模板？"):
+            self.commands.extend(new_commands)
+            self.refresh_command_list()
     
-    def hide_window(self) -> None:
-        """隐藏窗口"""
-        self.window.withdraw()
-    
-    def show_window(self) -> None:
-        """显示窗口"""
-        self.window.deiconify()
-        self.window.lift()
-    
-    def destroy(self) -> None:
-        """销毁窗口"""
-        self.window.destroy()
-    
-    def show_help(self) -> None:
-        """显示帮助信息"""
-        help_text = """命令编辑器使用帮助：
+    def apply_popup_template(self) -> None:
+        """应用弹窗测试模板"""
+        new_commands = [
+            ("TEST_CASE", "弹窗测试"),
+            ("OPEN_URL", "web/advanced.html"),
+            ("WAIT_FOR_PAGE_LOAD", ""),
+            ("CLICK_BY_ID", "show-popup-button"),
+            ("WAIT", "1"),
+            ("VERIFY_TEXT_EXISTS", "确认操作"),
+            ("CLICK_BY_TEXT", "确认"),
+            ("WAIT", "1"),
+            ("VERIFY_TEXT_EXISTS", "操作已确认")
+        ]
         
-1. 添加命令：
-   - 选择命令类型和具体命令
-   - 输入参数（多个参数用 || 分隔）
-   - 点击"添加命令"按钮
-
-2. 编辑命令：
-   - 选择要编辑的命令（单个）
-   - 点击"编辑"按钮
-   - 修改参数后重新添加
-
-3. 移动命令：
-   - 可以选择多个命令（按住Ctrl或Shift选择）
-   - 使用"上移"、"下移"、"移至顶部"或"移至底部"按钮
-
-4. 删除命令：
-   - 选择要删除的命令（可多选）
-   - 点击"删除"按钮或按Delete键
-
-5. 使用模板：
-   - 从下拉菜单选择模板
-   - 点击"应用模板"按钮
-
-6. 快捷键：
-   - Ctrl+S：保存命令
-   - Ctrl+O：加载命令
-   - Ctrl+E：执行命令
-   - Delete：删除选中命令
-"""
-        messagebox.showinfo("命令编辑器帮助", help_text)
+        if messagebox.askyesno("确认", "是否添加弹窗测试模板？"):
+            self.commands.extend(new_commands)
+            self.refresh_command_list()
+    
+    def apply_responsive_template(self) -> None:
+        """应用响应性测试模板"""
+        new_commands = [
+            ("TEST_CASE", "响应性测试"),
+            ("OPEN_URL", "web/index.html"),
+            ("WAIT_FOR_PAGE_LOAD", ""),
+            ("VERIFY_ELEMENT_EXISTS", "header-nav"),
+            ("WAIT", "1"),
+            ("SCROLL_TO_BOTTOM", ""),
+            ("WAIT", "1"),
+            ("VERIFY_ELEMENT_EXISTS", "footer-links")
+        ]
+        
+        if messagebox.askyesno("确认", "是否添加响应性测试模板？"):
+            self.commands.extend(new_commands)
+            self.refresh_command_list()
+    
+    def apply_pagination_template(self) -> None:
+        """应用分页测试模板"""
+        new_commands = [
+            ("TEST_CASE", "分页测试"),
+            ("OPEN_URL", "web/advanced.html"),
+            ("WAIT_FOR_PAGE_LOAD", ""),
+            ("VERIFY_TEXT_EXISTS", "第1页"),
+            ("CLICK_BY_ID", "next-page"),
+            ("WAIT", "1"),
+            ("VERIFY_TEXT_EXISTS", "第2页"),
+            ("CLICK_BY_ID", "next-page"),
+            ("WAIT", "1"),
+            ("VERIFY_TEXT_EXISTS", "第3页"),
+            ("CLICK_BY_ID", "prev-page"),
+            ("WAIT", "1"),
+            ("VERIFY_TEXT_EXISTS", "第2页")
+        ]
+        
+        if messagebox.askyesno("确认", "是否添加分页测试模板？"):
+            self.commands.extend(new_commands)
+            self.refresh_command_list()
+    
+    def apply_performance_template(self) -> None:
+        """应用性能测试模板"""
+        new_commands = [
+            ("TEST_CASE", "性能测试"),
+            ("OPEN_URL", "web/index.html"),
+            ("WAIT_FOR_PAGE_LOAD", ""),
+            ("CLICK_BY_ID", "load-data-button"),
+            ("WAIT_FOR_TEXT", "数据加载完成||10"),
+            ("VERIFY_COUNT", "data-item||5")
+        ]
+        
+        if messagebox.askyesno("确认", "是否添加性能测试模板？"):
+            self.commands.extend(new_commands)
+            self.refresh_command_list()
 
 
 if __name__ == "__main__":

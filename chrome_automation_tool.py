@@ -29,13 +29,14 @@ class ChromeAutomationTool:
         self.is_running: bool = False
         self.current_task: Optional[threading.Thread] = None
         self.step_window: Optional[StepWindow] = None
-        self.command_editor: Optional[CommandEditor] = None
+        self.command_editor = None  # 移除类型注解，因为CommandEditor实例将在标签页创建后初始化
         self.selenium_handler = SeleniumHandler()
         self.keywords: List[str] = []
         self.test_results: Dict[str, bool] = {}
         
         # 載入設置
         self.settings = utils.load_settings()
+        self.font_size = self.settings.get("font_size", utils.DEFAULT_FONT_SIZE)
         
         # 建立 UI
         self.create_ui()
@@ -45,8 +46,38 @@ class ChromeAutomationTool:
         
     def create_ui(self) -> None:
         """建立使用者介面"""
-        # 主框架
-        main_frame = ttk.Frame(self.root, padding="10")
+        # 設置自定義主題和顏色
+        self.style = ttk.Style()
+        
+        # 配置選項卡樣式
+        self.style.configure("TNotebook", background="#dddddd")  # 默认背景
+        self.style.configure("TNotebook.Tab", background="#cccccc", padding=[12, 4], font=('Arial', 10))
+        
+        # 设置选中和活动标签颜色 - 使用高对比度颜色
+        self.style.map("TNotebook.Tab", 
+                      background=[("selected", "#0078d7"), ("active", "#5dade2")],
+                      foreground=[("selected", "#ffffff"), ("active", "#ffffff")])
+        
+        # 創建標籤頁控件
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+        
+        # 主標籤頁
+        self.main_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.main_tab, text="主界面")
+        
+        # 命令編輯標籤頁
+        self.cmd_editor_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.cmd_editor_tab, text="命令編輯器")
+        
+        # 綁定標籤切換事件
+        self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_changed)
+        
+        # 初始化命令編輯器
+        self.command_editor = CommandEditor(self.cmd_editor_tab, on_execute_commands=self.start_automation)
+        
+        # 主框架（在主標籤頁中）
+        main_frame = ttk.Frame(self.main_tab, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         # ChromeDriver 狀態
@@ -76,26 +107,44 @@ class ChromeAutomationTool:
         self.show_steps_button = ttk.Button(buttons_frame, text="顯示步驟窗口", command=self.show_step_window)
         self.show_steps_button.pack(side=tk.LEFT, padx=5)
         
-        # 新增命令編輯器按鈕
-        self.show_editor_button = ttk.Button(buttons_frame, text="命令編輯器", command=self.show_command_editor)
-        self.show_editor_button.pack(side=tk.LEFT, padx=5)
+        # 切換到命令編輯器標籤頁按鈕
+        self.switch_to_editor_button = ttk.Button(buttons_frame, text="命令編輯器", command=self.switch_to_command_editor)
+        self.switch_to_editor_button.pack(side=tk.LEFT, padx=5)
         
-        # 新增保存設置按鈕
-        self.save_settings_button = ttk.Button(buttons_frame, text="保存設置", command=self.save_settings)
+        # 字體大小控制區域
+        font_control_frame = ttk.LabelFrame(main_frame, text="文字大小", padding="5")
+        font_control_frame.pack(fill=tk.X, pady=5)
+        
+        self.font_size_var = tk.StringVar(value=str(self.font_size))
+        
+        # 文字大小標籤和按鈕
+        ttk.Label(font_control_frame, text="字體大小:").pack(side=tk.LEFT, padx=(10, 5))
+        
+        self.decrease_font = ttk.Button(font_control_frame, text="-", width=2, command=self.decrease_font_size)
+        self.decrease_font.pack(side=tk.LEFT, padx=2)
+        
+        font_size_label = ttk.Label(font_control_frame, textvariable=self.font_size_var, width=2)
+        font_size_label.pack(side=tk.LEFT, padx=5)
+        
+        self.increase_font = ttk.Button(font_control_frame, text="+", width=2, command=self.increase_font_size)
+        self.increase_font.pack(side=tk.LEFT, padx=2)
+        
+        # 保存設置按鈕
+        self.save_settings_button = ttk.Button(font_control_frame, text="保存設置", command=self.save_settings)
         self.save_settings_button.pack(side=tk.RIGHT, padx=5)
         
         # 日誌區塊
         log_frame = ttk.LabelFrame(main_frame, text="執行日誌", padding="10")
         log_frame.pack(fill=tk.BOTH, expand=True, pady=5)
         
-        self.log_text = scrolledtext.ScrolledText(log_frame, height=20, wrap=tk.WORD)
+        self.log_text = scrolledtext.ScrolledText(log_frame, height=20, wrap=tk.WORD, font=("Arial", self.font_size))
         self.log_text.pack(fill=tk.BOTH, expand=True)
         
         # 新增結果摘要區域
         summary_frame = ttk.LabelFrame(main_frame, text="測試結果摘要", padding="10")
         summary_frame.pack(fill=tk.X, pady=5)
         
-        self.summary_text = scrolledtext.ScrolledText(summary_frame, height=5, wrap=tk.WORD)
+        self.summary_text = scrolledtext.ScrolledText(summary_frame, height=5, wrap=tk.WORD, font=("Arial", self.font_size))
         self.summary_text.pack(fill=tk.BOTH, expand=True)
         self.summary_text.config(state=tk.DISABLED)
         
@@ -115,19 +164,67 @@ class ChromeAutomationTool:
         self.add_log("歡迎使用 Chrome 自動化工具")
         self.add_log("此工具將自動操作本地 HTML 頁面，展示自動化功能")
     
+    def on_tab_changed(self, event) -> None:
+        """當標籤頁切換時更新樣式"""
+        # 不需要额外处理，ttk.Notebook已经会自动处理标签页样式
+        pass
+    
+    def increase_font_size(self) -> None:
+        """增加字體大小"""
+        if self.font_size < utils.MAX_FONT_SIZE:
+            self.font_size += 1
+            self.font_size_var.set(str(self.font_size))
+            self.update_font()
+            self.save_settings()
+    
+    def decrease_font_size(self) -> None:
+        """減小字體大小"""
+        if self.font_size > utils.MIN_FONT_SIZE:
+            self.font_size -= 1
+            self.font_size_var.set(str(self.font_size))
+            self.update_font()
+            self.save_settings()
+    
+    def update_font(self) -> None:
+        """更新字體大小"""
+        self.log_text.config(font=("Arial", self.font_size))
+        self.summary_text.config(font=("Arial", self.font_size))
+        
+        # 更新步驟窗口字體大小
+        if self.step_window:
+            self.step_window.set_font_size(self.font_size)
+    
     def show_step_window(self) -> None:
         """顯示步驟視窗"""
         if not self.step_window:
-            self.step_window = StepWindow(self.root)
+            self.step_window = StepWindow(self.root, self.font_size)
+            # 設置窗口位置在屏幕最右側
+            self.position_step_window()
         else:
             self.step_window.show_window()
+            self.position_step_window()
     
-    def show_command_editor(self) -> None:
-        """顯示命令編輯器"""
-        if not self.command_editor:
-            self.command_editor = CommandEditor(self.root, on_execute_commands=self.start_automation)
-        else:
-            self.command_editor.show_window()
+    def position_step_window(self) -> None:
+        """將步驟窗口定位到屏幕最右側"""
+        if not self.step_window:
+            return
+            
+        # 獲取屏幕寬度和高度
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        
+        # 獲取步驟窗口寬度
+        step_window_width = 350  # 設置一個固定寬度
+        
+        # 計算步驟窗口的 x 坐標 (屏幕最右側)
+        x_position = screen_width - step_window_width - 10  # 10 像素的邊距
+        
+        # 設置窗口位置和大小
+        self.step_window.set_position(x_position, 50, step_window_width, screen_height - 100)
+    
+    def switch_to_command_editor(self) -> None:
+        """切換到命令編輯器標籤頁"""
+        self.notebook.select(1)  # 切換到命令編輯器標籤頁（索引1）
     
     def update_step(self, step_index: int) -> None:
         """更新當前步驟"""
@@ -207,8 +304,12 @@ class ChromeAutomationTool:
     
     def save_settings(self) -> None:
         """保存設置"""
+        self.settings["font_size"] = self.font_size
+        utils.save_settings(self.settings)
+        
         if self.step_window:
-            self.step_window.save_settings()
+            self.step_window.set_font_size(self.font_size)
+        
         messagebox.showinfo("設置", "設置已保存")
     
     def update_summary(self) -> None:
@@ -242,6 +343,7 @@ class ChromeAutomationTool:
         
         # 初始化步驟
         self.initialize_steps()
+        self.position_step_window()  # 確保步驟窗口在正確位置
         
         # 清空測試結果
         self.test_results = {}
@@ -414,8 +516,6 @@ def main() -> None:
     def on_closing() -> None:
         if app.step_window:
             app.step_window.destroy()
-        if app.command_editor:
-            app.command_editor.destroy()
         if app.selenium_handler.driver:
             app.selenium_handler.close_driver()
         root.destroy()
