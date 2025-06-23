@@ -81,6 +81,7 @@ LOGIN =admin||password123
 
 我想製作一套可供多數人使用的 Chrome 自動化工具，請用 Python 撰寫，工具的需求如下：
 
+
 1. 程式會自動尋找與主程式同目錄的 chromedriver.exe，不需要手動輸入路徑或安裝環境變數。整體設計需能打包為 EXE 後直接運作。
 
 2. 所有操作步驟來自同目錄下的 command.txt，每行一個指令，格式為：
