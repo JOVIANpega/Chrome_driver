@@ -1,12 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
-import os
+
 
 a = Analysis(
     ['chrome_automation_tool.py'],
     pathex=[],
     binaries=[],
-    datas=[('web', 'web'), ('icon.ico', '.'), ('command.txt', '.')],
-    hiddenimports=['utils', 'step_window', 'selenium_handler'],
+    datas=[],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -35,5 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='icon.ico',
+    icon=['icon.ico'],
 )

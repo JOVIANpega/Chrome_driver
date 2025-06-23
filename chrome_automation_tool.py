@@ -14,6 +14,7 @@ from selenium.webdriver.common.by import By
 import utils
 from step_window import StepWindow
 from selenium_handler import SeleniumHandler
+from command_editor import CommandEditor
 
 # 初始化日誌
 utils.setup_logging()
@@ -28,6 +29,7 @@ class ChromeAutomationTool:
         self.is_running: bool = False
         self.current_task: Optional[threading.Thread] = None
         self.step_window: Optional[StepWindow] = None
+        self.command_editor: Optional[CommandEditor] = None
         self.selenium_handler = SeleniumHandler()
         self.keywords: List[str] = []
         self.test_results: Dict[str, bool] = {}
@@ -54,6 +56,10 @@ class ChromeAutomationTool:
         self.driver_status = tk.StringVar(value="尋找中...")
         ttk.Label(driver_frame, textvariable=self.driver_status).pack(side=tk.LEFT)
         
+        # 顯示版本信息
+        version_label = ttk.Label(driver_frame, text=f"版本: v{utils.VERSION}")
+        version_label.pack(side=tk.RIGHT, padx=5)
+        
         # 操作按鈕
         buttons_frame = ttk.Frame(main_frame)
         buttons_frame.pack(fill=tk.X, pady=10)
@@ -69,6 +75,10 @@ class ChromeAutomationTool:
         # 新增顯示步驟窗口按鈕
         self.show_steps_button = ttk.Button(buttons_frame, text="顯示步驟窗口", command=self.show_step_window)
         self.show_steps_button.pack(side=tk.LEFT, padx=5)
+        
+        # 新增命令編輯器按鈕
+        self.show_editor_button = ttk.Button(buttons_frame, text="命令編輯器", command=self.show_command_editor)
+        self.show_editor_button.pack(side=tk.LEFT, padx=5)
         
         # 新增保存設置按鈕
         self.save_settings_button = ttk.Button(buttons_frame, text="保存設置", command=self.save_settings)
@@ -111,6 +121,13 @@ class ChromeAutomationTool:
             self.step_window = StepWindow(self.root)
         else:
             self.step_window.show_window()
+    
+    def show_command_editor(self) -> None:
+        """顯示命令編輯器"""
+        if not self.command_editor:
+            self.command_editor = CommandEditor(self.root, on_execute_commands=self.start_automation)
+        else:
+            self.command_editor.show_window()
     
     def update_step(self, step_index: int) -> None:
         """更新當前步驟"""
@@ -248,293 +265,160 @@ class ChromeAutomationTool:
             self.update_step(0)
             
             if not self.selenium_handler.initialize_driver():
-                self.add_log("錯誤: 初始化 Chrome WebDriver 失敗")
+                self.add_log("初始化 Chrome WebDriver 失敗")
                 self.mark_step_failed(0)
-                messagebox.showerror("錯誤", "初始化 Chrome WebDriver 失敗")
                 self.reset_ui()
                 return
             
-            # 讀取命令檔案
-            commands = utils.read_commands()
-            if not commands:
-                self.add_log("警告: 命令檔案為空或不存在")
+            self.add_log("Chrome WebDriver 初始化成功")
             
-            # 執行命令
-            current_step_index = 1
-            in_test_case = False
-            test_case_name = ""
-            nav_sequence_name = ""
+            # 步驟 2: 打開本地 HTML 頁面
+            self.update_action("打開本地 HTML 頁面")
+            self.update_step(1)
             
-            for cmd, params in commands:
+            if not os.path.exists("web/index.html"):
+                self.add_log("錯誤: 找不到測試 HTML 檔案")
+                self.mark_step_failed(1)
+                self.reset_ui()
+                return
+            
+            if not self.selenium_handler.open_html_page("web/index.html"):
+                self.add_log("打開 HTML 頁面失敗")
+                self.mark_step_failed(1)
+                self.reset_ui()
+                return
+            
+            self.add_log("已成功打開 HTML 頁面")
+            
+            # 步驟 3: 登入表單測試
+            if not self.is_running:
+                self.reset_ui()
+                return
+            
+            self.update_action("登入表單測試")
+            self.update_step(2)
+            
+            if not self.selenium_handler.test_login_form():
+                self.add_log("登入表單測試失敗")
+                self.mark_step_failed(2)
+            else:
+                self.add_log("登入表單測試成功")
+            
+            # 步驟 4: 資料管理測試
+            if not self.is_running:
+                self.reset_ui()
+                return
+            
+            self.update_action("資料管理測試")
+            self.update_step(3)
+            
+            if not self.selenium_handler.test_data_management():
+                self.add_log("資料管理測試失敗")
+                self.mark_step_failed(3)
+            else:
+                self.add_log("資料管理測試成功")
+            
+            # 步驟 5: 搜尋功能測試
+            if not self.is_running:
+                self.reset_ui()
+                return
+            
+            self.update_action("搜尋功能測試")
+            self.update_step(4)
+            
+            if not self.selenium_handler.test_search_function():
+                self.add_log("搜尋功能測試失敗")
+                self.mark_step_failed(4)
+            else:
+                self.add_log("搜尋功能測試成功")
+            
+            # 步驟 6: 互動按鈕測試
+            if not self.is_running:
+                self.reset_ui()
+                return
+            
+            self.update_action("互動按鈕測試")
+            self.update_step(5)
+            
+            if not self.selenium_handler.test_interactive_buttons():
+                self.add_log("互動按鈕測試失敗")
+                self.mark_step_failed(5)
+            else:
+                self.add_log("互動按鈕測試成功")
+            
+            # 步驟 7+: 關鍵字搜尋測試
+            start_index = 6
+            
+            for i, keyword in enumerate(self.keywords):
                 if not self.is_running:
-                    self.add_log("使用者停止了自動化測試")
-                    break
-            
-                # 處理測試案例
-                if cmd == "TEST_CASE":
-                    in_test_case = True
-                    test_case_name = params[0] if params else "未命名測試案例"
-                    self.add_log(f"開始執行測試案例: {test_case_name}")
-                    self.update_action(f"測試案例: {test_case_name}")
-                    step_text = f"測試案例: {test_case_name}"
-                    step_index = self.add_step(step_text) if self.step_window else current_step_index
-                    self.update_step(step_index)
-                    current_step_index += 1
-                    continue
+                    self.reset_ui()
+                    return
                 
-                # 處理命令
-                self.update_action(f"執行: {cmd}")
-                step_text = f"{cmd}: {params[0] if params else ''}"
-                step_index = current_step_index
-                
-                if self.step_window and cmd != "NAV_SEQUENCE":
-                    step_index = self.add_step(step_text)
-                
+                step_index = start_index + i
+                self.update_action(f"搜尋關鍵字: {keyword}")
                 self.update_step(step_index)
-                self.add_log(f"執行命令: {cmd} {params}")
-            
-                result = False
                 
-                # 執行不同類型的命令
-                if cmd == "OPEN_URL":
-                    url_path = params[0] if params else "web/index.html"
-                    result = self.selenium_handler.open_html_page(url_path)
-                
-                elif cmd == "WAIT":
-                    seconds = int(params[0]) if params and params[0].isdigit() else 1
-                    result = self.selenium_handler.wait(seconds)
-                
-                elif cmd == "REFRESH":
-                    result = self.selenium_handler.refresh_page()
-                
-                elif cmd == "BACK":
-                    result = self.selenium_handler.go_back()
-                
-                elif cmd == "CLICK_BY_TEXT":
-                    text = params[0] if params else ""
-                    result = self.selenium_handler.click_by_text(text)
-                
-                elif cmd == "CLICK_BY_ID":
-                    element_id = params[0] if params else ""
-                    result = self.selenium_handler.click_by_id(element_id)
-                
-                elif cmd == "TYPE":
-                    text = params[0] if params else ""
-                    result = self.selenium_handler.type_text(text)
-                
-                elif cmd == "LOGIN":
-                    username = params[0] if len(params) > 0 else ""
-                    password = params[1] if len(params) > 1 else ""
-                    
-                    # 找到用戶名輸入框
-                    username_input = self.selenium_handler.driver.find_element(By.ID, "username")
-                    username_input.clear()
-                    username_input.send_keys(username)
-                    
-                    # 找到密碼輸入框
-                    password_input = self.selenium_handler.driver.find_element(By.ID, "password")
-                    password_input.clear()
-                    password_input.send_keys(password)
-                    
-                    result = True
-                
-                # 驗證指令
-                elif cmd == "VERIFY_TEXT_EXISTS":
-                    text = params[0] if params else ""
-                    result = self.selenium_handler.verify_text_exists(text)
-                
-                elif cmd == "VERIFY_TEXT_NOT_EXISTS":
-                    text = params[0] if params else ""
-                    result = self.selenium_handler.verify_text_not_exists(text)
-                
-                elif cmd == "VERIFY_ELEMENT_EXISTS":
-                    selector = params[0] if params else ""
-                    result = self.selenium_handler.verify_element_exists(selector)
-                
-                elif cmd == "VERIFY_ELEMENT_VALUE":
-                    selector = params[0] if len(params) > 0 else ""
-                    expected_value = params[1] if len(params) > 1 else ""
-                    result = self.selenium_handler.verify_element_value(selector, expected_value)
-                
-                elif cmd == "VERIFY_COUNT":
-                    selector = params[0] if len(params) > 0 else ""
-                    expected_count = int(params[1]) if len(params) > 1 and params[1].isdigit() else 0
-                    result = self.selenium_handler.verify_count(selector, expected_count)
-            
-                # 等待指令
-                elif cmd == "WAIT_FOR_TEXT":
-                    text = params[0] if len(params) > 0 else ""
-                    max_wait_time = int(params[1]) if len(params) > 1 and params[1].isdigit() else None
-                    result = self.selenium_handler.wait_for_text(text, max_wait_time)
-                
-                elif cmd == "WAIT_FOR_ELEMENT":
-                    selector = params[0] if len(params) > 0 else ""
-                    max_wait_time = int(params[1]) if len(params) > 1 and params[1].isdigit() else None
-                    result = self.selenium_handler.wait_for_element(selector, max_wait_time)
-                
-                elif cmd == "WAIT_FOR_PAGE_LOAD":
-                    max_wait_time = int(params[0]) if params and params[0].isdigit() else None
-                    result = self.selenium_handler.wait_for_page_load(max_wait_time)
-                
-                # 頁面導航與互動
-                elif cmd == "SCROLL_TO_ELEMENT":
-                    selector = params[0] if params else ""
-                    result = self.selenium_handler.scroll_to_element(selector)
-                
-                elif cmd == "SCROLL_TO_BOTTOM":
-                    result = self.selenium_handler.scroll_to_bottom()
-                
-                elif cmd == "EXPAND":
-                    selector = params[0] if params else ""
-                    result = self.selenium_handler.expand(selector)
-                
-                # 導航序列
-                elif cmd == "NAV_SEQUENCE":
-                    nav_sequence_name = params[0] if params else "導航序列"
-                    nav_commands = params[1:] if len(params) > 1 else []
-                    
-                    self.add_log(f"執行導航序列: {nav_sequence_name}")
-                    step_text = f"導航序列: {nav_sequence_name}"
-                    
-                    if self.step_window:
-                        step_index = self.add_step(step_text)
-                    
-                    self.update_step(step_index)
-                    result = self.selenium_handler.execute_nav_sequence(nav_commands)
-                
-                # 基本測試功能
-                elif cmd == "test_login_form":
-                    result = self.selenium_handler.test_login_form()
-                
-                elif cmd == "test_data_management":
-                    result = self.selenium_handler.test_data_management()
-                
-                elif cmd == "test_search_function":
-                    result = self.selenium_handler.test_search_function()
-                
-                elif cmd == "test_interactive_buttons":
-                    result = self.selenium_handler.test_interactive_buttons()
-                
-                # 處理結果
-                if result:
-                    self.add_log(f"命令執行成功: {cmd}")
-                    # 記錄成功結果
-                    self.test_results[step_text] = True
-                else:
-                    self.add_log(f"命令執行失敗: {cmd}")
+                if not self.selenium_handler.search_keyword(keyword):
+                    self.add_log(f"關鍵字搜尋失敗: {keyword}")
                     self.mark_step_failed(step_index)
-                    # 記錄失敗結果
-                    self.test_results[step_text] = False
-                
-                current_step_index += 1
+                else:
+                    self.add_log(f"關鍵字搜尋成功: {keyword}")
             
-            # 搜尋關鍵字
-            if self.keywords:
-                base_step_index = current_step_index
-                self.add_log("開始搜尋關鍵字")
-            
-                # 搜尋每個關鍵字
-                for i, keyword in enumerate(self.keywords):
-                    if not self.is_running:
-                        self.add_log("使用者停止了自動化測試")
-                        break
-                    
-                    step_index = base_step_index + i
-                    step_text = f"搜尋關鍵字: {keyword}"
-                    
-                    if self.step_window:
-                        step_index = self.add_step(step_text)
-                    
-                    self.update_step(step_index)
-                    self.update_action(f"搜尋關鍵字: {keyword}")
-                    
-                    try:
-                        found = self.selenium_handler.search_keyword(keyword)
-                        if found:
-                            self.add_log(f"✓ 找到關鍵字: {keyword}")
-                            # 記錄成功結果
-                            self.test_results[step_text] = True
-                        else:
-                            self.add_log(f"✗ 未找到關鍵字: {keyword}")
-                            self.mark_step_failed(step_index)
-                            # 記錄失敗結果
-                            self.test_results[step_text] = False
-                        
-                        # 給使用者時間觀察結果
-                        time.sleep(2)
-                    except Exception as e:
-                        self.add_log(f"搜尋關鍵字 '{keyword}' 時發生錯誤: {str(e)}")
-                        self.mark_step_failed(step_index)
-                        # 記錄失敗結果
-                        self.test_results[step_text] = False
-                
-                current_step_index = base_step_index + len(self.keywords)
-            
-            # 完成測試
-            final_step_text = "測試完成"
-            final_step_index = current_step_index
-            
-            if self.step_window:
-                final_step_index = self.add_step(final_step_text)
-            
-            self.update_step(final_step_index)
+            # 完成所有測試
             self.update_action("測試完成")
-            self.add_log("自動化測試完成！")
+            self.update_step(start_index + len(self.keywords))
+            self.add_log("所有測試已完成")
             
-            # 更新測試結果摘要
-            self.update_summary()
-            
-        except Exception as e:
-            self.add_log(f"執行過程中發生錯誤: {str(e)}")
-            self.add_log(traceback.format_exc())
-        
-        finally:
             # 關閉 WebDriver
             self.selenium_handler.close_driver()
             
-            # 給使用者時間觀察結果
-            time.sleep(3)
+            # 更新摘要
+            self.update_summary()
             
-            # 重置 UI 狀態
+        except Exception as e:
+            self.add_log(f"執行測試時發生錯誤: {str(e)}")
+            logging.error(f"執行測試時發生錯誤: {traceback.format_exc()}")
+        finally:
             self.reset_ui()
-            self.status.set("就緒")
     
     def update_action(self, action: str) -> None:
-        """更新目前執行的動作"""
+        """更新當前動作"""
         self.current_action.set(action)
-        self.root.update_idletasks()
+        self.add_log(f"執行: {action}")
     
     def reset_ui(self) -> None:
         """重置 UI 狀態"""
+        self.is_running = False
         self.start_button.config(state=tk.NORMAL)
         self.stop_button.config(state=tk.DISABLED)
-        self.is_running = False
-        self.current_action.set("")
+        self.status.set("就緒")
 
 def main() -> None:
     # 建立主視窗
     root = tk.Tk()
-    root.title("Chrome 自動化工具")
-    
-    # 設定圖示
-    icon_path = "icon.ico"
-    if os.path.exists(icon_path):
-        try:
-            root.iconbitmap(icon_path)
-        except Exception:
-            pass
-    
-    # 創建應用程式
     app = ChromeAutomationTool(root)
     
-    # 設定關閉視窗事件處理
-    def on_closing() -> None:
-        if app.is_running:
-            if messagebox.askokcancel("確認", "程式正在執行中，確定要關閉嗎？"):
-                app.stop_automation()
-                root.destroy()
+    # 設定圖標
+    try:
+        icon_path = utils.get_resource_path(os.path.join("assets", "icon.ico"))
+        if os.path.exists(icon_path):
+            root.iconbitmap(icon_path)
         else:
-            root.destroy()
+            icon_path = "icon.ico"
+            if os.path.exists(icon_path):
+                root.iconbitmap(icon_path)
+    except Exception as e:
+        logging.warning(f"載入圖標時發生錯誤: {str(e)}")
+    
+    # 視窗關閉處理
+    def on_closing() -> None:
+        if app.step_window:
+            app.step_window.destroy()
+        if app.command_editor:
+            app.command_editor.destroy()
+        if app.selenium_handler.driver:
+            app.selenium_handler.close_driver()
+        root.destroy()
     
     root.protocol("WM_DELETE_WINDOW", on_closing)
     

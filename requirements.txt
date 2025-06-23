@@ -1,0 +1,4 @@
+selenium>=4.0.0
+tkinter>=8.6
+pillow>=8.0.0
+difflib>=4.0.0 

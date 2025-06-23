@@ -3,8 +3,14 @@ import os
 import sys
 import logging
 import json
+import re
+import difflib
 from typing import List, Tuple, Dict, Any, Optional
 from datetime import datetime
+
+# 版本信息
+VERSION = "0.6"
+VERSION_DATE = "2023-09-21"
 
 # 常量定義
 WINDOW_WIDTH = 800
@@ -24,6 +30,10 @@ CMD_VERIFY = "verify"         # 驗證指令
 CMD_WAIT = "wait"             # 等待指令
 CMD_NAV = "navigation"        # 導航指令
 CMD_TEST = "test"             # 測試案例相關指令
+CMD_FUZZY = "fuzzy"           # 模糊匹配指令
+
+# 相似度閾值常量
+DEFAULT_SIMILARITY_THRESHOLD = 0.8  # 80% 相似度
 
 # 指令定義
 COMMANDS = {
@@ -61,7 +71,14 @@ COMMANDS = {
     # 測試案例相關
     "TEST_CASE": CMD_TEST,
     "DESCRIPTION": CMD_TEST,
-    "SEVERITY": CMD_TEST
+    "SEVERITY": CMD_TEST,
+    
+    # 模糊匹配指令 (新增)
+    "VERIFY_TEXT_CONTAINS": CMD_FUZZY,      # 文本包含部分匹配
+    "VERIFY_TEXT_PATTERN": CMD_FUZZY,       # 文本模式匹配 (支持正則表達式)
+    "VERIFY_TEXT_SIMILAR": CMD_FUZZY,       # 文本相似度匹配 (支持模糊匹配)
+    "VERIFY_ANY_TEXT": CMD_FUZZY,           # 多條件 OR 關係匹配 (任一條件符合即通過)
+    "VERIFY_ALL_TEXT": CMD_FUZZY,           # 多條件 AND 關係匹配 (所有條件都符合才通過)
 }
 
 # 設置文件路徑
@@ -199,6 +216,39 @@ def is_wait_command(cmd: str) -> bool:
     """檢查是否為等待命令"""
     return get_command_type(cmd) == CMD_WAIT 
 
+def is_fuzzy_command(cmd: str) -> bool:
+    """檢查是否為模糊匹配命令"""
+    return get_command_type(cmd) == CMD_FUZZY
+
+def calculate_text_similarity(text1: str, text2: str) -> float:
+    """計算兩個文本的相似度 (0.0 到 1.0)"""
+    return difflib.SequenceMatcher(None, text1, text2).ratio()
+
+def text_contains(page_text: str, expected_text: str) -> bool:
+    """檢查頁面文本是否包含預期文本 (部分匹配)"""
+    return expected_text.lower() in page_text.lower()
+
+def text_matches_pattern(page_text: str, pattern: str) -> bool:
+    """檢查頁面文本是否符合正則表達式模式"""
+    try:
+        regex = re.compile(pattern, re.IGNORECASE)
+        return bool(regex.search(page_text))
+    except re.error as e:
+        logging.error(f"正則表達式錯誤: {str(e)}")
+        return False
+
+def text_is_similar(page_text: str, expected_text: str, threshold: float = DEFAULT_SIMILARITY_THRESHOLD) -> bool:
+    """檢查頁面文本與預期文本的相似度是否超過閾值"""
+    return calculate_text_similarity(page_text.lower(), expected_text.lower()) >= threshold
+
+def any_text_matches(page_text: str, expected_texts: List[str]) -> bool:
+    """檢查頁面文本是否匹配任一預期文本 (OR 邏輯)"""
+    return any(expected_text.lower() in page_text.lower() for expected_text in expected_texts)
+
+def all_texts_match(page_text: str, expected_texts: List[str]) -> bool:
+    """檢查頁面文本是否匹配所有預期文本 (AND 邏輯)"""
+    return all(expected_text.lower() in page_text.lower() for expected_text in expected_texts)
+
 def get_resource_path(relative_path: str) -> str:
     """獲取資源文件的絕對路徑（打包後可用）"""
     try:
@@ -248,11 +298,11 @@ def update_test_results(test_name: str, passed: bool) -> None:
     if "test_results" not in settings:
         settings["test_results"] = {}
     
-    settings["test_results"][test_name] = {
-        "passed": passed,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
+    # 更新測試結果
+    settings["test_results"][test_name] = passed
     
+    # 更新最後執行日期
     settings["last_run_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
+    # 保存設置
     save_settings(settings) 

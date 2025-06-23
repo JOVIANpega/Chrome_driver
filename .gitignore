@@ -1,10 +1,9 @@
-# Python 相關
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -16,14 +15,38 @@ lib64/
 parts/
 sdist/
 var/
+wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 
-# 日誌檔案
+# Log files
 *.log
-log.txt
 automation_logs/
+log.txt
+
+# Chromedriver
+chromedriver.exe
+*.exe
+
+# Settings and temporary files
+settings.json
+*.tmp
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # 備份檔案
 *.bak
@@ -31,13 +54,10 @@ automation_logs/
 BACKUP/
 
 # 其他
-.DS_Store
-.env
-.venv
+env/
 venv/
 ENV/
-.idea/
-.vscode/
+*.env
+*.venv
 *.swp
-*~
-chromedriver.exe 
+*~ 

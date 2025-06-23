@@ -698,6 +698,19 @@ class SeleniumHandler:
             return self.wait(int(params[0])) if params else False
         elif cmd == "TYPE":
             return self.type_text(params[0]) if params else False
+        elif cmd == "VERIFY_TEXT_CONTAINS":
+            return self.verify_text_contains(params[0]) if params else False
+        elif cmd == "VERIFY_TEXT_PATTERN":
+            return self.verify_text_pattern(params[0]) if params else False
+        elif cmd == "VERIFY_TEXT_SIMILAR":
+            if len(params) > 1:
+                return self.verify_text_similar(params[0], params[1])
+            else:
+                return self.verify_text_similar(params[0]) if params else False
+        elif cmd == "VERIFY_ANY_TEXT":
+            return self.verify_any_text(params) if params else False
+        elif cmd == "VERIFY_ALL_TEXT":
+            return self.verify_all_text(params) if params else False
         # 可以根據需要添加更多命令
         else:
             logging.warning(f"未知命令: {cmd}")
@@ -764,4 +777,109 @@ class SeleniumHandler:
             except Exception as e:
                 logging.error(f"關閉 WebDriver 時發生錯誤: {str(e)}")
             finally:
-                self.driver = None 
+                self.driver = None
+    
+    # 新增模糊匹配相關方法
+    def verify_text_contains(self, expected_text: str) -> bool:
+        """驗證頁面文本包含部分指定文本 (部分匹配)"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            page_text = self.driver.find_element(By.TAG_NAME, "body").text
+            if utils.text_contains(page_text, expected_text):
+                logging.info(f"成功: 找到包含 '{expected_text}' 的文本")
+                return True
+            else:
+                logging.warning(f"警告: 未找到包含 '{expected_text}' 的文本")
+                return False
+        except Exception as e:
+            logging.error(f"驗證文本包含時發生錯誤: {str(e)}")
+            return False
+    
+    def verify_text_pattern(self, pattern: str) -> bool:
+        """驗證頁面文本符合指定的正則表達式模式"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            page_text = self.driver.find_element(By.TAG_NAME, "body").text
+            if utils.text_matches_pattern(page_text, pattern):
+                logging.info(f"成功: 文本符合模式 '{pattern}'")
+                return True
+            else:
+                logging.warning(f"警告: 文本不符合模式 '{pattern}'")
+                return False
+        except Exception as e:
+            logging.error(f"驗證文本模式時發生錯誤: {str(e)}")
+            return False
+    
+    def verify_text_similar(self, expected_text: str, threshold: float = None) -> bool:
+        """驗證頁面文本與指定文本的相似度是否超過閾值"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            page_text = self.driver.find_element(By.TAG_NAME, "body").text
+            
+            # 如果沒有指定閾值，使用默認值
+            if threshold is None:
+                threshold = utils.DEFAULT_SIMILARITY_THRESHOLD
+            else:
+                threshold = float(threshold)
+            
+            similarity = utils.calculate_text_similarity(page_text, expected_text)
+            if similarity >= threshold:
+                logging.info(f"成功: 文本相似度 {similarity:.2f} 超過閾值 {threshold:.2f}")
+                return True
+            else:
+                logging.warning(f"警告: 文本相似度 {similarity:.2f} 低於閾值 {threshold:.2f}")
+                return False
+        except Exception as e:
+            logging.error(f"驗證文本相似度時發生錯誤: {str(e)}")
+            return False
+    
+    def verify_any_text(self, expected_texts: List[str]) -> bool:
+        """驗證頁面是否包含任一指定文本 (OR 邏輯)"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            page_text = self.driver.find_element(By.TAG_NAME, "body").text
+            
+            if utils.any_text_matches(page_text, expected_texts):
+                logging.info(f"成功: 找到符合條件的文本 (任一條件滿足)")
+                return True
+            else:
+                expected_str = " 或 ".join([f"'{text}'" for text in expected_texts])
+                logging.warning(f"警告: 未找到任何符合條件的文本: {expected_str}")
+                return False
+        except Exception as e:
+            logging.error(f"驗證任一文本時發生錯誤: {str(e)}")
+            return False
+    
+    def verify_all_text(self, expected_texts: List[str]) -> bool:
+        """驗證頁面是否包含所有指定文本 (AND 邏輯)"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            page_text = self.driver.find_element(By.TAG_NAME, "body").text
+            
+            if utils.all_texts_match(page_text, expected_texts):
+                logging.info(f"成功: 找到所有符合條件的文本 (所有條件滿足)")
+                return True
+            else:
+                # 找出哪些文本不符合
+                missing_texts = [text for text in expected_texts if text.lower() not in page_text.lower()]
+                missing_str = ", ".join([f"'{text}'" for text in missing_texts])
+                logging.warning(f"警告: 缺少以下文本: {missing_str}")
+                return False
+        except Exception as e:
+            logging.error(f"驗證所有文本時發生錯誤: {str(e)}")
+            return False 
