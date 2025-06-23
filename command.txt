@@ -1,6 +1,96 @@
 # 自動化命令，每行一個指令，格式為: 指令名 = 參數
 # 若參數有多個欄位，用兩個直線符號（||）區隔
 
+# 整合頁面自動化測試
+TEST_CASE = 整合頁面自動化測試
+OPEN_URL = web/integrated.html
+WAIT_FOR_PAGE_LOAD
+
+# 登入測試
+TEST_CASE = 登入功能測試
+CLICK_BY_ID = username
+TYPE = admin
+CLICK_BY_ID = password
+TYPE = admin123
+CLICK_BY_ID = login-button
+WAIT_FOR_TEXT = 登入成功||5
+VERIFY_TEXT_EXISTS = 歡迎 admin
+
+# 產品篩選與排序測試
+TEST_CASE = 產品篩選與排序測試
+CLICK_BY_ID = category-filter
+CLICK_BY_TEXT = 筆記型電腦
+CLICK_BY_ID = sort-by
+CLICK_BY_TEXT = 價格由高到低
+CLICK_BY_ID = apply-filter
+WAIT = 2
+VERIFY_TEXT_EXISTS = ROG Strix G15
+
+# 產品詳情測試
+TEST_CASE = 產品詳情測試
+CLICK_BY_TEXT = 查看詳情
+WAIT_FOR_ELEMENT = #product-title||5
+VERIFY_TEXT_EXISTS = ROG Strix G15
+EXPAND = #tech-specs-btn
+WAIT = 1
+VERIFY_TEXT_EXISTS = 處理器: Intel Core i7-11800H
+
+# 折疊區域測試
+TEST_CASE = 折疊區域展開測試
+EXPAND = #user-reviews-btn
+WAIT = 1
+VERIFY_TEXT_EXISTS = 王小明
+VERIFY_TEXT_EXISTS = 很棒的電競筆電
+
+# 訂單處理流程測試
+TEST_CASE = 訂單處理流程測試
+CLICK_BY_ID = about-link
+WAIT = 1
+CLICK_BY_ID = order-product
+CLICK_BY_TEXT = ROG Strix G15
+CLICK_BY_ID = next-step1
+WAIT = 1
+CLICK_BY_ID = customer-name
+TYPE = 測試用戶
+CLICK_BY_ID = customer-email
+TYPE = test@example.com
+CLICK_BY_ID = customer-address
+TYPE = 台北市測試區
+CLICK_BY_ID = next-step2
+WAIT = 1
+VERIFY_TEXT_EXISTS = ROG Strix G15
+VERIFY_TEXT_EXISTS = 測試用戶
+CLICK_BY_ID = submit-order
+WAIT = 1
+VERIFY_TEXT_EXISTS = 訂單已成功送出
+
+# 無限滾動測試
+TEST_CASE = 無限滾動測試
+CLICK_BY_ID = home-link
+WAIT = 1
+SCROLL_TO_ELEMENT = #infinite-scroll-section
+WAIT = 2
+VERIFY_TEXT_EXISTS = 項目 0
+SCROLL_TO_BOTTOM
+WAIT = 2
+VERIFY_TEXT_EXISTS = 項目 20
+
+# 互動按鈕測試
+TEST_CASE = 互動按鈕測試
+CLICK_BY_ID = show-message
+WAIT = 1
+VERIFY_TEXT_EXISTS = 這個頁面可以用於測試各種互動
+CLICK_BY_ID = count-button
+WAIT = 1
+VERIFY_TEXT_EXISTS = 計數: 1
+
+# 新聞內容測試
+TEST_CASE = 新聞內容測試
+SCROLL_TO_ELEMENT = #news-section
+WAIT = 1
+VERIFY_TEXT_EXISTS = 台灣戰貓
+VERIFY_TEXT_EXISTS = 需要有9條命才能存活
+
 # 打開本地 HTML 頁面
 OPEN_URL = web/index.html
 
@@ -61,15 +151,6 @@ OPEN_URL = web/advanced.html
 WAIT_FOR_PAGE_LOAD
 WAIT = 1
 
-# 登入測試
-CLICK_BY_ID = username
-TYPE = admin
-CLICK_BY_ID = password
-TYPE = admin123
-CLICK_BY_ID = login-button
-WAIT_FOR_TEXT = 登入成功||5
-VERIFY_TEXT_EXISTS = 歡迎 admin
-
 # 多層次導航
 NAV_SEQUENCE_START = 產品導航
   CLICK_BY_ID = electronics-link
@@ -77,14 +158,6 @@ NAV_SEQUENCE_START = 產品導航
   CLICK_BY_ID = laptops-link
   WAIT = 2
 NAV_SEQUENCE_END
-
-# 篩選與排序
-CLICK_BY_ID = category-filter
-CLICK_BY_TEXT = 筆記型電腦
-CLICK_BY_ID = sort-by
-CLICK_BY_TEXT = 價格由高到低
-CLICK_BY_ID = apply-filter
-WAIT = 2
 
 # 選擇產品
 CLICK_BY_TEXT = 查看詳情

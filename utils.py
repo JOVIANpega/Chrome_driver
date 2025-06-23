@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
 import logging
+import json
 from typing import List, Tuple, Dict, Any, Optional
+from datetime import datetime
 
 # 常量定義
 WINDOW_WIDTH = 800
@@ -12,6 +15,8 @@ DEFAULT_WAIT_TIME = 5
 LOG_FILE = "log.txt"
 COMMAND_FILE = "command.txt"
 DEFAULT_FONT_SIZE = 10
+MIN_FONT_SIZE = 8
+MAX_FONT_SIZE = 16
 
 # 指令類型常量
 CMD_BASIC = "basic"           # 基本操作指令
@@ -59,17 +64,40 @@ COMMANDS = {
     "SEVERITY": CMD_TEST
 }
 
-# 設定日誌
-def setup_logging():
-    """設定日誌系統"""
+# 設置文件路徑
+SETTINGS_FILE = "settings.json"
+
+def setup_logging() -> None:
+    """設置日誌系統"""
+    # 確保日誌目錄存在
+    log_dir = "automation_logs"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    
+    # 設置日誌檔案名稱，使用當前日期時間
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = os.path.join(log_dir, f"automation_{current_time}.log")
+    
+    # 配置日誌
     logging.basicConfig(
+        filename=log_file,
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(LOG_FILE, encoding="utf-8"),
-            logging.StreamHandler()
-        ]
+        datefmt='%Y-%m-%d %H:%M:%S'
     )
+    
+    # 同時輸出到控制台
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    console.setFormatter(formatter)
+    logging.getLogger('').addHandler(console)
+    
+    # 將 log.txt 設置為默認日誌
+    handler = logging.FileHandler('log.txt', mode='a')
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(formatter)
+    logging.getLogger('').addHandler(handler)
 
 def read_commands() -> List[Tuple[str, List[str]]]:
     """讀取命令檔案"""
@@ -126,27 +154,20 @@ def read_commands() -> List[Tuple[str, List[str]]]:
     return commands
 
 def load_keywords_from_command() -> List[str]:
-    """從 command.txt 讀取關鍵字"""
-    keywords = []
+    """從命令檔案讀取關鍵字"""
     try:
-        if os.path.exists(COMMAND_FILE):
-            with open(COMMAND_FILE, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    # 跳過空行、註解行和指令行
-                    if (not line or line.startswith("#") or 
-                        "=" in line or "||" in line or
-                        line in ["NAV_SEQUENCE_START", "NAV_SEQUENCE_END"]):
-                        continue
+        keywords = []
+        with open("command.txt", "r", encoding="utf-8") as file:
+            for line in file:
+                line = line.strip()
+                # 不包含 # 或 = 的行視為關鍵字
+                if line and "#" not in line and "=" not in line:
                     keywords.append(line)
-            
-            logging.info(f"已載入 {len(keywords)} 個關鍵字")
-        else:
-            logging.info(f"找不到 {COMMAND_FILE} 檔案")
+        logging.info(f"已載入 {len(keywords)} 個關鍵字")
+        return keywords
     except Exception as e:
         logging.error(f"讀取關鍵字時發生錯誤: {str(e)}")
-    
-    return keywords
+        return []
 
 def parse_command_param(param: str, default_value: Any = None) -> Any:
     """解析命令參數，處理特殊值和預設值"""
@@ -177,3 +198,61 @@ def is_verification_command(cmd: str) -> bool:
 def is_wait_command(cmd: str) -> bool:
     """檢查是否為等待命令"""
     return get_command_type(cmd) == CMD_WAIT 
+
+def get_resource_path(relative_path: str) -> str:
+    """獲取資源文件的絕對路徑（打包後可用）"""
+    try:
+        # PyInstaller 創建臨時文件夾 _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    
+    return os.path.join(base_path, relative_path)
+
+def save_settings(settings: Dict[str, Any]) -> bool:
+    """保存設置到JSON文件"""
+    try:
+        with open(SETTINGS_FILE, 'w', encoding='utf-8') as file:
+            json.dump(settings, file, ensure_ascii=False, indent=4)
+        logging.info("設置已保存")
+        return True
+    except Exception as e:
+        logging.error(f"保存設置時發生錯誤: {str(e)}")
+        return False
+
+def load_settings() -> Dict[str, Any]:
+    """從JSON文件加載設置"""
+    default_settings = {
+        "font_size": DEFAULT_FONT_SIZE,
+        "test_results": {},
+        "last_run_date": ""
+    }
+    
+    try:
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, 'r', encoding='utf-8') as file:
+                settings = json.load(file)
+            logging.info("設置已載入")
+            return settings
+        else:
+            logging.info("未找到設置文件，使用默認設置")
+            return default_settings
+    except Exception as e:
+        logging.error(f"載入設置時發生錯誤: {str(e)}")
+        return default_settings
+
+def update_test_results(test_name: str, passed: bool) -> None:
+    """更新測試結果"""
+    settings = load_settings()
+    
+    if "test_results" not in settings:
+        settings["test_results"] = {}
+    
+    settings["test_results"][test_name] = {
+        "passed": passed,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    
+    settings["last_run_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    save_settings(settings) 

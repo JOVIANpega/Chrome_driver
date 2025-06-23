@@ -30,6 +30,10 @@ class ChromeAutomationTool:
         self.step_window: Optional[StepWindow] = None
         self.selenium_handler = SeleniumHandler()
         self.keywords: List[str] = []
+        self.test_results: Dict[str, bool] = {}
+        
+        # 載入設置
+        self.settings = utils.load_settings()
         
         # 建立 UI
         self.create_ui()
@@ -62,12 +66,28 @@ class ChromeAutomationTool:
         
         ttk.Button(buttons_frame, text="清除日誌", command=lambda: self.log_text.delete(1.0, tk.END)).pack(side=tk.LEFT, padx=5)
         
+        # 新增顯示步驟窗口按鈕
+        self.show_steps_button = ttk.Button(buttons_frame, text="顯示步驟窗口", command=self.show_step_window)
+        self.show_steps_button.pack(side=tk.LEFT, padx=5)
+        
+        # 新增保存設置按鈕
+        self.save_settings_button = ttk.Button(buttons_frame, text="保存設置", command=self.save_settings)
+        self.save_settings_button.pack(side=tk.RIGHT, padx=5)
+        
         # 日誌區塊
         log_frame = ttk.LabelFrame(main_frame, text="執行日誌", padding="10")
         log_frame.pack(fill=tk.BOTH, expand=True, pady=5)
         
         self.log_text = scrolledtext.ScrolledText(log_frame, height=20, wrap=tk.WORD)
         self.log_text.pack(fill=tk.BOTH, expand=True)
+        
+        # 新增結果摘要區域
+        summary_frame = ttk.LabelFrame(main_frame, text="測試結果摘要", padding="10")
+        summary_frame.pack(fill=tk.X, pady=5)
+        
+        self.summary_text = scrolledtext.ScrolledText(summary_frame, height=5, wrap=tk.WORD)
+        self.summary_text.pack(fill=tk.BOTH, expand=True)
+        self.summary_text.config(state=tk.DISABLED)
         
         # 目前執行的命令
         self.current_action = tk.StringVar(value="")
@@ -90,18 +110,24 @@ class ChromeAutomationTool:
         if not self.step_window:
             self.step_window = StepWindow(self.root)
         else:
-            self.step_window.deiconify()  # 如果已經存在，則重新顯示
-            self.step_window.lift()  # 將視窗提升到最上層
+            self.step_window.show_window()
     
     def update_step(self, step_index: int) -> None:
         """更新當前步驟"""
         if self.step_window:
             self.step_window.set_current_step(step_index)
+            # 標記步驟為通過
+            self.step_window.mark_step_passed(step_index)
     
     def mark_step_failed(self, step_index: int) -> None:
         """標記步驟為失敗"""
         if self.step_window:
             self.step_window.mark_step_failed(step_index)
+            
+            # 記錄失敗結果
+            if 0 <= step_index < len(self.step_window.steps):
+                step_text = self.step_window.steps[step_index]
+                self.test_results[step_text] = False
     
     def add_step(self, step_text: str) -> int:
         """新增步驟"""
@@ -162,6 +188,30 @@ class ChromeAutomationTool:
         # 寫入日誌檔
         logging.info(message)
     
+    def save_settings(self) -> None:
+        """保存設置"""
+        if self.step_window:
+            self.step_window.save_settings()
+        messagebox.showinfo("設置", "設置已保存")
+    
+    def update_summary(self) -> None:
+        """更新測試結果摘要"""
+        if self.step_window:
+            self.step_window.update_summary()
+            
+            # 同時更新主窗口的摘要
+            self.summary_text.config(state=tk.NORMAL)
+            self.summary_text.delete(1.0, tk.END)
+            
+            # 獲取步驟窗口的摘要內容
+            self.step_window.summary_text.config(state=tk.NORMAL)
+            summary_content = self.step_window.summary_text.get(1.0, tk.END)
+            self.step_window.summary_text.config(state=tk.DISABLED)
+            
+            # 在主窗口顯示
+            self.summary_text.insert(tk.END, summary_content)
+            self.summary_text.config(state=tk.DISABLED)
+    
     def start_automation(self) -> None:
         """開始自動化測試"""
         if self.is_running:
@@ -175,6 +225,9 @@ class ChromeAutomationTool:
         
         # 初始化步驟
         self.initialize_steps()
+        
+        # 清空測試結果
+        self.test_results = {}
         
         # 啟動執行緒
         self.current_task = threading.Thread(target=self.run_automation)
@@ -216,7 +269,7 @@ class ChromeAutomationTool:
                 if not self.is_running:
                     self.add_log("使用者停止了自動化測試")
                     break
-                
+            
                 # 處理測試案例
                 if cmd == "TEST_CASE":
                     in_test_case = True
@@ -239,7 +292,7 @@ class ChromeAutomationTool:
                 
                 self.update_step(step_index)
                 self.add_log(f"執行命令: {cmd} {params}")
-                
+            
                 result = False
                 
                 # 執行不同類型的命令
@@ -307,7 +360,7 @@ class ChromeAutomationTool:
                     selector = params[0] if len(params) > 0 else ""
                     expected_count = int(params[1]) if len(params) > 1 and params[1].isdigit() else 0
                     result = self.selenium_handler.verify_count(selector, expected_count)
-                
+            
                 # 等待指令
                 elif cmd == "WAIT_FOR_TEXT":
                     text = params[0] if len(params) > 0 else ""
@@ -365,9 +418,13 @@ class ChromeAutomationTool:
                 # 處理結果
                 if result:
                     self.add_log(f"命令執行成功: {cmd}")
+                    # 記錄成功結果
+                    self.test_results[step_text] = True
                 else:
                     self.add_log(f"命令執行失敗: {cmd}")
                     self.mark_step_failed(step_index)
+                    # 記錄失敗結果
+                    self.test_results[step_text] = False
                 
                 current_step_index += 1
             
@@ -375,7 +432,7 @@ class ChromeAutomationTool:
             if self.keywords:
                 base_step_index = current_step_index
                 self.add_log("開始搜尋關鍵字")
-                
+            
                 # 搜尋每個關鍵字
                 for i, keyword in enumerate(self.keywords):
                     if not self.is_running:
@@ -395,15 +452,21 @@ class ChromeAutomationTool:
                         found = self.selenium_handler.search_keyword(keyword)
                         if found:
                             self.add_log(f"✓ 找到關鍵字: {keyword}")
+                            # 記錄成功結果
+                            self.test_results[step_text] = True
                         else:
                             self.add_log(f"✗ 未找到關鍵字: {keyword}")
                             self.mark_step_failed(step_index)
+                            # 記錄失敗結果
+                            self.test_results[step_text] = False
                         
                         # 給使用者時間觀察結果
                         time.sleep(2)
                     except Exception as e:
                         self.add_log(f"搜尋關鍵字 '{keyword}' 時發生錯誤: {str(e)}")
                         self.mark_step_failed(step_index)
+                        # 記錄失敗結果
+                        self.test_results[step_text] = False
                 
                 current_step_index = base_step_index + len(self.keywords)
             
@@ -417,6 +480,9 @@ class ChromeAutomationTool:
             self.update_step(final_step_index)
             self.update_action("測試完成")
             self.add_log("自動化測試完成！")
+            
+            # 更新測試結果摘要
+            self.update_summary()
             
         except Exception as e:
             self.add_log(f"執行過程中發生錯誤: {str(e)}")
