@@ -1,1 +1,0 @@
-pyinstaller --onefile --windowed --icon=icon.ico --name="Chrome自動化工具" chrome_automation_tool.py

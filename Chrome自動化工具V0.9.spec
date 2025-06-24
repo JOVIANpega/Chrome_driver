@@ -1,28 +1,32 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+block_cipher = None
 
 a = Analysis(
     ['chrome_automation_tool.py'],
     pathex=[],
-    binaries=[],
-    datas=[],
+    binaries=[('chromedriver.exe', '.')],
+    datas=[('assets', 'assets'), ('web', 'web')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
     noarchive=False,
-    optimize=0,
 )
-pyz = PYZ(a.pure)
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
+    a.zipfiles,
     a.datas,
     [],
-    name='Chrome自動化工具',
+    name='Chrome自動化工具V0.9',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -35,5 +39,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['icon.ico'],
-)
+    version='version_info_new.txt',
+    icon='assets/icon.ico',
+) 

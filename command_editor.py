@@ -188,7 +188,7 @@ class CommandEditor:
         try:
             with open(utils.COMMAND_FILE, 'w', encoding='utf-8') as f:
                 for cmd in self.commands:
-                    f.write(f"{cmd}\n")
+                        f.write(f"{cmd}\n")
             messagebox.showinfo("保存", "命令已成功保存")
             logging.info(f"已保存 {len(self.commands)} 個命令到 command.txt")
         except Exception as e:
