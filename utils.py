@@ -10,8 +10,8 @@ from datetime import datetime
 import time
 
 # 版本信息
-VERSION = "0.9.0"
-VERSION_DATE = "2023-09-25"
+VERSION = "0.9.1"
+VERSION_DATE = "2023-09-26"
 
 # 常量定義
 WINDOW_WIDTH = 800
