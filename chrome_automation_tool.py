@@ -29,7 +29,7 @@ class ChromeAutomationTool:
         self.is_running: bool = False
         self.current_task: Optional[threading.Thread] = None
         self.step_window: Optional[StepWindow] = None
-        self.command_editor = None  # 移除類型註解，因爲CommandEditor實例將在標籤頁創建後初始化
+        self.command_editor = None
         self.selenium_handler = SeleniumHandler()
         self.keywords: List[str] = []
         self.test_results: Dict[str, bool] = {}
@@ -43,6 +43,9 @@ class ChromeAutomationTool:
         
         # 自動尋找 chromedriver.exe
         self.find_chromedriver()
+        
+        # 綁定關閉事件
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
     def create_ui(self) -> None:
         """建立使用者介面"""
@@ -210,7 +213,7 @@ class ChromeAutomationTool:
             self.save_settings()
     
     def update_font(self) -> None:
-        """更新字體大小"""
+        """更新所有 UI 元素的字體大小"""
         # 更新所有文本元素的字體大小
         self.log_text.config(font=("Arial", self.font_size))
         self.summary_text.config(font=("Arial", self.font_size))
@@ -231,8 +234,28 @@ class ChromeAutomationTool:
         if self.command_editor:
             self.command_editor.set_font_size(self.font_size)
         
+        # 更新所有子部件的字體
+        self._update_widget_fonts(self.root)
+        
         # 重新繪製界面
         self.root.update_idletasks()
+    
+    def _update_widget_fonts(self, widget: tk.Widget) -> None:
+        """遞迴更新所有子部件的字體"""
+        try:
+            # 更新當前部件的字體
+            if isinstance(widget, (tk.Label, tk.Button, tk.Entry, tk.Text)):
+                widget.configure(font=("Arial", self.font_size))
+            elif isinstance(widget, ttk.Widget):
+                style_name = widget.winfo_class()
+                if style_name in ["TLabel", "TButton", "TEntry"]:
+                    self.style.configure(style_name, font=("Arial", self.font_size))
+        except (tk.TclError, AttributeError):
+            pass
+        
+        # 遞迴更新子部件
+        for child in widget.winfo_children():
+            self._update_widget_fonts(child)
     
     def show_step_window(self) -> None:
         """顯示步驟視窗"""
@@ -388,6 +411,31 @@ class ChromeAutomationTool:
         # 清空測試結果
         self.test_results = {}
         
+        # 檢查必要檔案
+        if not os.path.exists("assets/icon.ico"):
+            logging.error("找不到圖示檔案")
+            self.reset_ui()
+            return
+            
+        if not os.path.exists("web/360_TEST_WEBFILE.html"):
+            logging.error("找不到測試頁面")
+            self.reset_ui()
+            return
+            
+        # 初始化 Selenium
+        if not self.selenium_handler:
+            self.selenium_handler = SeleniumHandler()
+            
+        if not self.selenium_handler.initialize_driver():
+            logging.error("初始化 WebDriver 失敗")
+            self.reset_ui()
+            return
+            
+        if not self.selenium_handler.open_html_page("web/360_TEST_WEBFILE.html"):
+            logging.error("開啟測試頁面失敗")
+            self.reset_ui()
+            return
+        
         # 啟動執行緒
         self.current_task = threading.Thread(target=self.run_automation)
         self.current_task.daemon = True
@@ -402,126 +450,65 @@ class ChromeAutomationTool:
     def run_automation(self) -> None:
         """執行自動化測試"""
         try:
-            # 步驟 1: 初始化 WebDriver
-            self.update_action("初始化 Chrome WebDriver")
-            self.update_step(0)
-            
+            # 初始化 WebDriver
             if not self.selenium_handler.initialize_driver():
-                self.add_log("初始化 Chrome WebDriver 失敗")
-                self.mark_step_failed(0)
+                self.add_log("錯誤: 無法初始化 WebDriver")
                 self.reset_ui()
                 return
             
-            self.add_log("Chrome WebDriver 初始化成功")
-            
-            # 步驟 2: 打開本地 HTML 頁面
-            self.update_action("打開本地 HTML 頁面")
-            self.update_step(1)
-            
-            if not os.path.exists("web/index.html"):
-                self.add_log("錯誤: 找不到測試 HTML 檔案")
-                self.mark_step_failed(1)
+            # 讀取命令
+            commands = utils.read_commands()
+            if not commands:
+                self.add_log("錯誤: 沒有可執行的命令")
                 self.reset_ui()
                 return
             
-            if not self.selenium_handler.open_html_page("web/index.html"):
-                self.add_log("打開 HTML 頁面失敗")
-                self.mark_step_failed(1)
-                self.reset_ui()
-                return
-            
-            self.add_log("已成功打開 HTML 頁面")
-            
-            # 步驟 3: 登入表單測試
-            if not self.is_running:
-                self.reset_ui()
-                return
-            
-            self.update_action("登入表單測試")
-            self.update_step(2)
-            
-            if not self.selenium_handler.test_login_form():
-                self.add_log("登入表單測試失敗")
-                self.mark_step_failed(2)
+            # 初始化步驟視窗
+            if not self.step_window:
+                self.step_window = StepWindow(self.root, self.font_size)
             else:
-                self.add_log("登入表單測試成功")
+                self.step_window.show_window()
             
-            # 步驟 4: 資料管理測試
-            if not self.is_running:
-                self.reset_ui()
-                return
+            # 設置步驟
+            steps = [f"{cmd}: {', '.join(params)}" for cmd, params in commands]
+            self.step_window.set_steps(steps)
             
-            self.update_action("資料管理測試")
-            self.update_step(3)
-            
-            if not self.selenium_handler.test_data_management():
-                self.add_log("資料管理測試失敗")
-                self.mark_step_failed(3)
-            else:
-                self.add_log("資料管理測試成功")
-            
-            # 步驟 5: 搜尋功能測試
-            if not self.is_running:
-                self.reset_ui()
-                return
-            
-            self.update_action("搜尋功能測試")
-            self.update_step(4)
-            
-            if not self.selenium_handler.test_search_function():
-                self.add_log("搜尋功能測試失敗")
-                self.mark_step_failed(4)
-            else:
-                self.add_log("搜尋功能測試成功")
-            
-            # 步驟 6: 互動按鈕測試
-            if not self.is_running:
-                self.reset_ui()
-                return
-            
-            self.update_action("互動按鈕測試")
-            self.update_step(5)
-            
-            if not self.selenium_handler.test_interactive_buttons():
-                self.add_log("互動按鈕測試失敗")
-                self.mark_step_failed(5)
-            else:
-                self.add_log("互動按鈕測試成功")
-            
-            # 步驟 7+: 關鍵字搜尋測試
-            start_index = 6
-            
-            for i, keyword in enumerate(self.keywords):
+            # 執行命令
+            for i, (cmd, params) in enumerate(commands):
                 if not self.is_running:
-                    self.reset_ui()
-                    return
+                    break
                 
-                step_index = start_index + i
-                self.update_action(f"搜尋關鍵字: {keyword}")
-                self.update_step(step_index)
-                
-                if not self.selenium_handler.search_keyword(keyword):
-                    self.add_log(f"關鍵字搜尋失敗: {keyword}")
-                    self.mark_step_failed(step_index)
-                else:
-                    self.add_log(f"關鍵字搜尋成功: {keyword}")
-            
-            # 完成所有測試
-            self.update_action("測試完成")
-            self.update_step(start_index + len(self.keywords))
-            self.add_log("所有測試已完成")
-            
-            # 關閉 WebDriver
-            self.selenium_handler.close_driver()
-            
-            # 更新摘要
-            self.update_summary()
+                try:
+                    self.step_window.set_current_step(i)
+                    self.update_action(f"執行: {cmd}")
+                    
+                    # 執行命令
+                    success = self._execute_command(cmd, params)
+                    
+                    # 更新步驟狀態
+                    if success:
+                        self.step_window.mark_step_passed(i)
+                        self.add_log(f"✓ {cmd}: {', '.join(params)}")
+                    else:
+                        self.step_window.mark_step_failed(i)
+                        self.add_log(f"✗ {cmd}: {', '.join(params)}")
+                    
+                    # 更新測試結果摘要
+                    self.step_window.update_summary()
+                    self.update_summary()
+                    
+                except Exception as e:
+                    self.step_window.mark_step_failed(i)
+                    self.add_log(f"錯誤: {cmd} 執行失敗 - {str(e)}")
+                    logging.error(f"命令執行錯誤: {str(e)}")
+                    continue
             
         except Exception as e:
-            self.add_log(f"執行測試時發生錯誤: {str(e)}")
-            logging.error(f"執行測試時發生錯誤: {traceback.format_exc()}")
+            self.add_log(f"自動化執行過程中發生錯誤: {str(e)}")
+            logging.error(f"自動化執行錯誤: {str(e)}")
         finally:
             self.reset_ui()
+            self.selenium_handler.close_driver()
     
     def update_action(self, action: str) -> None:
         """更新當前動作"""
@@ -534,6 +521,31 @@ class ChromeAutomationTool:
         self.start_button.config(state=tk.NORMAL)
         self.stop_button.config(state=tk.DISABLED)
         self.status.set("就緒")
+    
+    def on_closing(self) -> None:
+        """處理視窗關閉事件"""
+        try:
+            # 停止自動化任務
+            if self.is_running:
+                self.stop_automation()
+            
+            # 關閉 step_window
+            if self.step_window:
+                self.step_window.destroy()
+            
+            # 關閉 selenium driver
+            if self.selenium_handler:
+                self.selenium_handler.close_driver()
+            
+            # 保存設置
+            self.save_settings()
+            
+            # 關閉主視窗
+            self.root.destroy()
+            
+        except Exception as e:
+            logging.error(f"關閉程式時發生錯誤: {str(e)}")
+            self.root.destroy()
 
 def main() -> None:
     # 建立主視窗

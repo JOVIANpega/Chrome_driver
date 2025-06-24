@@ -1,18 +1,29 @@
-TYPE=username-field || test_user
-TYPE=email-field || test@example.com
-TYPE=password-field || secure_password
-CLICK_BY_ID=submit-button
-VERIFY_TEXT_EXISTS=表單提交成功
-TYPE=search-box || 測試關鍵字
-CLICK_BY_ID=search-button
+# 360 Camera 登入測試命令
+TEST_CASE=測試登入功能
+OPEN_URL=web/360_TEST_WEBFILE.html
 WAIT=2
-VERIFY_TEXT_EXISTS=搜尋結果
-VERIFY_COUNT=result-item || 5
-LOGIN=admin || password123
+
+# 測試錯誤登入
+TEST_CASE=測試錯誤的登入資訊
+TYPE_TEXT=wronguser
+WAIT=1
+TYPE_TEXT=wrongpass
+WAIT=1
+CLICK_BY_CSS=button.login-button
+WAIT=2
+VERIFY_TEXT_EXISTS=使用者名稱或密碼錯誤
+
+# 測試正確登入
+TEST_CASE=測試正確的登入資訊
+TYPE_TEXT=admin
+WAIT=1
+TYPE_TEXT=Pega#1234
+WAIT=1
+CLICK_BY_CSS=button.login-button
+WAIT=2
 VERIFY_TEXT_EXISTS=登入成功
-CLICK_BY_ID=logout-button
-VERIFY_TEXT_EXISTS=您已登出系統
-VERIFY_TEXT_EXISTS=歡迎使用 Chrome 自動化測試
-VERIFY_TEXT_CONTAINS=自動化 || 測試
-VERIFY_TEXT_NOT_EXISTS=錯誤訊息
-VERIFY_TEXT_SIMILAR=歡迎使用自動化測試 || 0.8
+
+# 驗證登入成功後遮罩層消失
+TEST_CASE=驗證登入成功
+WAIT=2
+VERIFY_TEXT_EXISTS=360 Camera 測試頁面整合
