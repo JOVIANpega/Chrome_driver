@@ -1020,77 +1020,57 @@ class SeleniumHandler:
     
     def _execute_command(self, cmd: str, params: List[str]) -> bool:
         """執行單一命令"""
-        if cmd == "CLICK_BY_TEXT":
-            return self.click_by_text(params[0]) if params else False
-        elif cmd == "CLICK_BY_ID":
-            return self.click_by_id(params[0]) if params else False
-        elif cmd == "WAIT":
-            return self.wait(int(params[0])) if params else False
-        elif cmd == "TYPE":
-            return self.type_text(params[0]) if params else False
-        elif cmd == "VERIFY_TEXT_CONTAINS":
-            return self.verify_text_contains(params[0]) if params else False
-        elif cmd == "VERIFY_TEXT_PATTERN":
-            return self.verify_text_pattern(params[0]) if params else False
-        elif cmd == "VERIFY_TEXT_SIMILAR":
-            if len(params) > 1:
-                return self.verify_text_similar(params[0], params[1])
-            else:
-                return self.verify_text_similar(params[0]) if params else False
-        elif cmd == "VERIFY_ANY_TEXT":
-            return self.verify_any_text(params) if params else False
-        elif cmd == "VERIFY_ALL_TEXT":
-            return self.verify_all_text(params) if params else False
-        # 可以根據需要添加更多命令
-        else:
-            logging.warning(f"未知命令: {cmd}")
-            return False
-    
-    def click_by_text(self, text: str) -> bool:
-        """點擊包含指定文字的元素"""
-        if not self.driver:
-            logging.error("WebDriver 未初始化")
-            return False
-        
         try:
-            # 嘗試使用不同的方法找到包含文字的元素
-            methods = [
-                # 精確匹配
-                f"//button[text()='{text}']",
-                f"//a[text()='{text}']",
-                f"//input[@value='{text}']",
-                f"//label[text()='{text}']",
-                f"//*[text()='{text}']",
-                
-                # 包含文字
-                f"//button[contains(text(),'{text}')]",
-                f"//a[contains(text(),'{text}')]",
-                f"//input[contains(@value,'{text}')]",
-                f"//label[contains(text(),'{text}')]",
-                f"//*[contains(text(),'{text}')]",
-                
-                # 包含文字的子元素
-                f"//*[.//*[contains(text(),'{text}')]]"
-            ]
-            
-            for xpath in methods:
-                elements = self.driver.find_elements(By.XPATH, xpath)
-                if elements:
-                    for element in elements:
-                        if element.is_displayed() and element.is_enabled():
-                            element.click()
-                            logging.info(f"已點擊包含文字 '{text}' 的元素")
-                            return True
-            
-            logging.warning(f"找不到包含文字 '{text}' 的可點擊元素")
-            return False
+            if cmd == "CLICK_BY_TEXT":
+                return self.click_by_text(params[0]) if params else False
+            elif cmd == "CLICK_BY_ID":
+                return self.click_by_id(params[0]) if params else False
+            elif cmd == "CLICK_BY_CSS":
+                return self.click_by_css(params[0]) if params else False
+            elif cmd == "WAIT":
+                return self.wait(int(params[0])) if params else False
+            elif cmd == "TYPE":
+                return self.type_text(params[0]) if params else False
+            elif cmd == "OPEN_URL":
+                return self.open_html_page(params[0]) if params else False
+            elif cmd == "VERIFY_TEXT_CONTAINS":
+                return self.verify_text_contains(params[0]) if params else False
+            elif cmd == "VERIFY_TEXT_PATTERN":
+                return self.verify_text_pattern(params[0]) if params else False
+            elif cmd == "VERIFY_TEXT_EXISTS":
+                return self.verify_text_exists(params[0]) if params else False
+            elif cmd == "VERIFY_ELEMENT_EXISTS":
+                return self.verify_element_exists(params[0]) if params else False
+            elif cmd == "VERIFY_TEXT_SIMILAR":
+                if len(params) > 1:
+                    return self.verify_text_similar(params[0], params[1])
+                else:
+                    return self.verify_text_similar(params[0]) if params else False
+            elif cmd == "VERIFY_ANY_TEXT":
+                return self.verify_any_text(params) if params else False
+            elif cmd == "VERIFY_ALL_TEXT":
+                return self.verify_all_text(params) if params else False
+            elif cmd == "TEST_CASE":
+                # 記錄測試案例訊息但不做實際操作
+                logging.info(f"執行測試案例: {params[0] if params else '未指定'}")
+                return True
+            elif cmd == "DESCRIPTION":
+                # 記錄描述訊息但不做實際操作
+                logging.info(f"測試描述: {params[0] if params else '未指定'}")
+                return True
+            # 可以根據需要添加更多命令
+            else:
+                logging.warning(f"未知命令: {cmd}")
+                return False
         except Exception as e:
-            logging.error(f"點擊包含文字 '{text}' 的元素時發生錯誤: {str(e)}")
+            logging.error(f"執行命令 {cmd} 時發生錯誤: {str(e)}")
             return False
     
     def wait(self, seconds: int) -> bool:
         """等待指定秒數"""
         try:
+            # 直接使用 time.sleep，不使用 WebDriverWait
+            # 這樣可以避免 'WebDriverWait' object is not callable 錯誤
             time.sleep(seconds)
             logging.info(f"已等待 {seconds} 秒")
             return True
@@ -1416,6 +1396,26 @@ class SeleniumHandler:
             
         except Exception as e:
             logging.error(f"測試裝置設定頁面時發生錯誤: {str(e)}")
+            return False
+    
+    def click_by_css(self, css_selector: str) -> bool:
+        """通過 CSS 選擇器點擊元素"""
+        if not self.driver:
+            logging.error("WebDriver 未初始化")
+            return False
+        
+        try:
+            # 等待元素可點擊
+            wait = WebDriverWait(self.driver, utils.DEFAULT_WAIT_TIME)
+            element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, css_selector)))
+            element.click()
+            logging.info(f"已點擊 CSS 選擇器 '{css_selector}' 的元素")
+            return True
+        except (NoSuchElementException, TimeoutException):
+            logging.warning(f"找不到 CSS 選擇器 '{css_selector}' 的元素")
+            return False
+        except Exception as e:
+            logging.error(f"點擊 CSS 選擇器 '{css_selector}' 的元素時發生錯誤: {str(e)}")
             return False
 
 if __name__ == "__main__":

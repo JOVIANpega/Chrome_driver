@@ -546,6 +546,32 @@ class ChromeAutomationTool:
         except Exception as e:
             logging.error(f"關閉程式時發生錯誤: {str(e)}")
             self.root.destroy()
+    
+    def _execute_command(self, cmd: str, params: List[str]) -> bool:
+        """執行單一命令"""
+        if not self.selenium_handler:
+            logging.error("Selenium Handler 未初始化")
+            return False
+            
+        try:
+            # 特殊處理 WAIT 命令
+            if cmd == "WAIT":
+                try:
+                    import time
+                    seconds = int(params[0]) if params else 1
+                    time.sleep(seconds)
+                    logging.info(f"已等待 {seconds} 秒")
+                    return True
+                except Exception as e:
+                    logging.error(f"等待時發生錯誤: {str(e)}")
+                    return False
+            else:
+                # 其他命令轉發給 selenium_handler 執行
+                result = self.selenium_handler._execute_command(cmd, params)
+                return result
+        except Exception as e:
+            logging.error(f"執行命令 {cmd} 時發生錯誤: {str(e)}")
+            return False
 
 def main() -> None:
     # 建立主視窗
