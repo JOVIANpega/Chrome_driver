@@ -5,16 +5,16 @@ import logging
 import utils
 
 class StepWindow:
-    def __init__(self, parent: tk.Tk) -> None:
+    def __init__(self, parent: tk.Tk, font_size=None) -> None:
         """初始化步驟視窗"""
         self.window = tk.Toplevel(parent)
         self.window.title("執行步驟")
-        self.window.geometry("600x400")
+        self.window.geometry("350x600")
         self.window.protocol("WM_DELETE_WINDOW", self.hide_window)  # 關閉時隱藏而非銷毀
         
         # 載入設置
         self.settings = utils.load_settings()
-        self.font_size = self.settings.get("font_size", utils.DEFAULT_FONT_SIZE)
+        self.font_size = font_size if font_size is not None else self.settings.get("font_size", utils.DEFAULT_FONT_SIZE)
         
         # 創建 UI
         self.create_ui()
@@ -24,74 +24,94 @@ class StepWindow:
         self.current_step = -1
         self.failed_steps = set()
         
+        # 初始位置設定為右側
+        self.set_default_position()
+        
+        # 使窗口始終置頂
+        self.window.attributes("-topmost", True)
+        
         # 顯示視窗
         self.window.update()
         self.window.deiconify()
     
     def create_ui(self) -> None:
         """創建使用者介面"""
-        main_frame = ttk.Frame(self.window, padding="10")
+        # 設置窗口背景色，使其更易區分
+        self.window.configure(background="#f0f8ff")  # 淺藍色背景
+        
+        main_frame = ttk.Frame(self.window, padding="5")
         main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # 步驟列表標題（添加樣式）
+        title_frame = ttk.Frame(main_frame)
+        title_frame.pack(fill=tk.X, pady=(0, 5))
+        
+        title_label = ttk.Label(title_frame, text="執行步驟", font=("Arial", self.font_size + 2, "bold"))
+        title_label.pack(side=tk.LEFT)
         
         # 工具列
         toolbar = ttk.Frame(main_frame)
-        toolbar.pack(fill=tk.X, pady=(0, 10))
+        toolbar.pack(fill=tk.X, pady=(0, 5))
         
-        # 字體大小調整
-        ttk.Label(toolbar, text="字體大小:").pack(side=tk.LEFT, padx=(0, 5))
-        
-        self.decrease_font = ttk.Button(toolbar, text="-", width=2, command=self.decrease_font_size)
-        self.decrease_font.pack(side=tk.LEFT)
-        
-        self.font_size_var = tk.StringVar(value=str(self.font_size))
-        font_size_label = ttk.Label(toolbar, textvariable=self.font_size_var, width=2)
-        font_size_label.pack(side=tk.LEFT, padx=5)
-        
-        self.increase_font = ttk.Button(toolbar, text="+", width=2, command=self.increase_font_size)
-        self.increase_font.pack(side=tk.LEFT)
-        
-        # 保存按鈕
-        self.save_button = ttk.Button(toolbar, text="保存設置", command=self.save_settings)
-        self.save_button.pack(side=tk.RIGHT, padx=5)
-
-        # 狀態指示
-        ttk.Label(toolbar, text="進度:").pack(side=tk.RIGHT, padx=5)
+        # 進度指示
         self.progress_var = tk.StringVar(value="0/0")
-        ttk.Label(toolbar, textvariable=self.progress_var).pack(side=tk.RIGHT)
+        progress_frame = ttk.Frame(toolbar)
+        progress_frame.pack(side=tk.LEFT)
+        
+        ttk.Label(progress_frame, text="進度:").pack(side=tk.LEFT)
+        ttk.Label(progress_frame, textvariable=self.progress_var, font=("Arial", self.font_size, "bold")).pack(side=tk.LEFT, padx=5)
         
         # 步驟列表
-        self.step_list = tk.Listbox(main_frame, font=("Arial", self.font_size))
-        self.step_list.pack(fill=tk.BOTH, expand=True)
+        list_frame = ttk.Frame(main_frame)
+        list_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        
+        # 添加邊框和背景色
+        self.step_list = tk.Listbox(list_frame, font=("Arial", self.font_size), 
+                                   background="white", selectbackground="#d0e0ff", 
+                                   relief=tk.SUNKEN, borderwidth=2)
+        self.step_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
         # 滾動條
-        scrollbar = ttk.Scrollbar(self.step_list, orient=tk.VERTICAL, command=self.step_list.yview)
+        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.step_list.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.step_list.config(yscrollcommand=scrollbar.set)
         
         # 結果摘要
-        self.summary_frame = ttk.LabelFrame(main_frame, text="測試結果摘要", padding="10")
-        self.summary_frame.pack(fill=tk.X, pady=(10, 0))
+        self.summary_frame = ttk.LabelFrame(main_frame, text="測試結果摘要")
+        self.summary_frame.pack(fill=tk.X, pady=(5, 0))
         
-        self.summary_text = tk.Text(self.summary_frame, height=5, font=("Arial", self.font_size))
-        self.summary_text.pack(fill=tk.BOTH, expand=True)
+        self.summary_text = tk.Text(self.summary_frame, height=4, font=("Arial", self.font_size),
+                                   background="#f8f8f8", relief=tk.SUNKEN, borderwidth=2)
+        self.summary_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         self.summary_text.config(state=tk.DISABLED)
+    
+    def set_default_position(self) -> None:
+        """設置默認位置在螢幕右側"""
+        screen_width = self.window.winfo_screenwidth()
+        screen_height = self.window.winfo_screenheight()
         
-        # 更新UI
+        window_width = 350
+        window_height = min(600, screen_height - 100)
+        
+        x_position = screen_width - window_width - 10
+        y_position = 50
+        
+        self.window.geometry(f"{window_width}x{window_height}+{x_position}+{y_position}")
+    
+    def set_position(self, x, y, width=None, height=None) -> None:
+        """設置窗口位置和大小"""
+        if width is None:
+            width = 350
+        if height is None:
+            height = 600
+        
+        self.window.geometry(f"{width}x{height}+{x}+{y}")
+    
+    def set_font_size(self, size) -> None:
+        """設置字體大小"""
+        self.font_size = size
+        self.settings["font_size"] = size
         self.update_font()
-    
-    def increase_font_size(self) -> None:
-        """增加字體大小"""
-        if self.font_size < utils.MAX_FONT_SIZE:
-            self.font_size += 1
-            self.font_size_var.set(str(self.font_size))
-            self.update_font()
-    
-    def decrease_font_size(self) -> None:
-        """減小字體大小"""
-        if self.font_size > utils.MIN_FONT_SIZE:
-            self.font_size -= 1
-            self.font_size_var.set(str(self.font_size))
-            self.update_font()
     
     def update_font(self) -> None:
         """更新字體大小"""
@@ -215,6 +235,7 @@ class StepWindow:
         """顯示視窗"""
         self.window.deiconify()
         self.window.lift()
+        self.window.attributes("-topmost", True)  # 確保窗口在最前面
     
     def destroy(self) -> None:
         """銷毀視窗"""

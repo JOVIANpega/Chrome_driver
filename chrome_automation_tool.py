@@ -29,7 +29,7 @@ class ChromeAutomationTool:
         self.is_running: bool = False
         self.current_task: Optional[threading.Thread] = None
         self.step_window: Optional[StepWindow] = None
-        self.command_editor = None  # 移除类型注解，因为CommandEditor实例将在标签页创建后初始化
+        self.command_editor = None  # 移除類型註解，因爲CommandEditor實例將在標籤頁創建後初始化
         self.selenium_handler = SeleniumHandler()
         self.keywords: List[str] = []
         self.test_results: Dict[str, bool] = {}
@@ -49,14 +49,34 @@ class ChromeAutomationTool:
         # 設置自定義主題和顏色
         self.style = ttk.Style()
         
-        # 配置選項卡樣式
-        self.style.configure("TNotebook", background="#dddddd")  # 默认背景
-        self.style.configure("TNotebook.Tab", background="#cccccc", padding=[12, 4], font=('Arial', 10))
+        # 設置整體顏色方案
+        bg_color = "#ffffff"  # 白色背景
+        selected_tab_bg = "#000080"  # 深藍色選中標籤
+        active_tab_bg = "#000066"  # 活動標籤背景色
+        tab_bg = "#e0e0e0"  # 未選中標籤背景色
         
-        # 设置选中和活动标签颜色 - 使用高对比度颜色
+        # 確保所有小部件都使用自定義樣式
+        self.style.theme_use('default')  # 使用默認主題作為基礎
+        
+        # 配置根窗口背景色
+        self.root.configure(background=bg_color)
+        
+        # 配置選項卡樣式
+        self.style.configure("TNotebook", background=bg_color)
+        self.style.configure("TNotebook.Tab", background=tab_bg, padding=[12, 4], font=('Arial', self.font_size))
+        
+        # 設置選中和活動標籤顏色 - 加強對比度
         self.style.map("TNotebook.Tab", 
-                      background=[("selected", "#0078d7"), ("active", "#5dade2")],
+                      background=[("selected", selected_tab_bg), ("active", active_tab_bg)],
                       foreground=[("selected", "#ffffff"), ("active", "#ffffff")])
+        
+        # 設置標籤頁頂部區域背景顏色
+        self.style.configure("TNotebook", background=bg_color, tabmargins=[0, 0, 0, 0])
+        
+        # 設置按鈕和標籤樣式
+        self.style.configure("TButton", font=('Arial', self.font_size))
+        self.style.configure("TLabel", font=('Arial', self.font_size))
+        self.style.configure("TLabelframe.Label", font=('Arial', self.font_size))
         
         # 創建標籤頁控件
         self.notebook = ttk.Notebook(self.root)
@@ -85,10 +105,10 @@ class ChromeAutomationTool:
         driver_frame.pack(fill=tk.X, pady=5)
         
         self.driver_status = tk.StringVar(value="尋找中...")
-        ttk.Label(driver_frame, textvariable=self.driver_status).pack(side=tk.LEFT)
+        ttk.Label(driver_frame, textvariable=self.driver_status, font=("Arial", self.font_size)).pack(side=tk.LEFT)
         
         # 顯示版本信息
-        version_label = ttk.Label(driver_frame, text=f"版本: v{utils.VERSION}")
+        version_label = ttk.Label(driver_frame, text=f"版本: v{utils.VERSION}", font=("Arial", self.font_size))
         version_label.pack(side=tk.RIGHT, padx=5)
         
         # 操作按鈕
@@ -118,12 +138,12 @@ class ChromeAutomationTool:
         self.font_size_var = tk.StringVar(value=str(self.font_size))
         
         # 文字大小標籤和按鈕
-        ttk.Label(font_control_frame, text="字體大小:").pack(side=tk.LEFT, padx=(10, 5))
+        ttk.Label(font_control_frame, text="字體大小:", font=("Arial", self.font_size), style="TLabel").pack(side=tk.LEFT, padx=(10, 5))
         
         self.decrease_font = ttk.Button(font_control_frame, text="-", width=2, command=self.decrease_font_size)
         self.decrease_font.pack(side=tk.LEFT, padx=2)
         
-        font_size_label = ttk.Label(font_control_frame, textvariable=self.font_size_var, width=2)
+        font_size_label = ttk.Label(font_control_frame, textvariable=self.font_size_var, width=2, font=("Arial", self.font_size), style="TLabel")
         font_size_label.pack(side=tk.LEFT, padx=5)
         
         self.increase_font = ttk.Button(font_control_frame, text="+", width=2, command=self.increase_font_size)
@@ -137,14 +157,14 @@ class ChromeAutomationTool:
         log_frame = ttk.LabelFrame(main_frame, text="執行日誌", padding="10")
         log_frame.pack(fill=tk.BOTH, expand=True, pady=5)
         
-        self.log_text = scrolledtext.ScrolledText(log_frame, height=20, wrap=tk.WORD, font=("Arial", self.font_size))
+        self.log_text = scrolledtext.ScrolledText(log_frame, height=20, wrap=tk.WORD, font=("Arial", self.font_size), bg="#ffffff")
         self.log_text.pack(fill=tk.BOTH, expand=True)
         
         # 新增結果摘要區域
         summary_frame = ttk.LabelFrame(main_frame, text="測試結果摘要", padding="10")
         summary_frame.pack(fill=tk.X, pady=5)
         
-        self.summary_text = scrolledtext.ScrolledText(summary_frame, height=5, wrap=tk.WORD, font=("Arial", self.font_size))
+        self.summary_text = scrolledtext.ScrolledText(summary_frame, height=5, wrap=tk.WORD, font=("Arial", self.font_size), bg="#ffffff")
         self.summary_text.pack(fill=tk.BOTH, expand=True)
         self.summary_text.config(state=tk.DISABLED)
         
@@ -152,12 +172,12 @@ class ChromeAutomationTool:
         self.current_action = tk.StringVar(value="")
         current_frame = ttk.Frame(main_frame)
         current_frame.pack(fill=tk.X, pady=5)
-        ttk.Label(current_frame, text="目前執行:").pack(side=tk.LEFT)
-        ttk.Label(current_frame, textvariable=self.current_action).pack(side=tk.LEFT, padx=5)
+        ttk.Label(current_frame, text="目前執行:", font=("Arial", self.font_size)).pack(side=tk.LEFT)
+        ttk.Label(current_frame, textvariable=self.current_action, font=("Arial", self.font_size)).pack(side=tk.LEFT, padx=5)
         
         # 狀態列
         self.status = tk.StringVar(value="就緒")
-        status_bar = ttk.Label(self.root, textvariable=self.status, relief=tk.SUNKEN, anchor=tk.W)
+        status_bar = ttk.Label(self.root, textvariable=self.status, relief=tk.SUNKEN, anchor=tk.W, font=("Arial", self.font_size))
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
         
         # 顯示初始說明
@@ -166,8 +186,12 @@ class ChromeAutomationTool:
     
     def on_tab_changed(self, event) -> None:
         """當標籤頁切換時更新樣式"""
-        # 不需要额外处理，ttk.Notebook已经会自动处理标签页样式
-        pass
+        # 如果切換到命令編輯器標籤頁，更新命令編輯器的字體大小
+        if self.notebook.index("current") == 1 and self.command_editor:
+            self.command_editor.set_font_size(self.font_size)
+        
+        # 更新當前標籤頁樣式
+        self.root.update_idletasks()
     
     def increase_font_size(self) -> None:
         """增加字體大小"""
@@ -187,12 +211,28 @@ class ChromeAutomationTool:
     
     def update_font(self) -> None:
         """更新字體大小"""
+        # 更新所有文本元素的字體大小
         self.log_text.config(font=("Arial", self.font_size))
         self.summary_text.config(font=("Arial", self.font_size))
+        
+        # 更新標籤頁字體
+        self.style.configure("TNotebook.Tab", font=('Arial', self.font_size))
+        
+        # 更新按鈕和標籤樣式
+        self.style.configure("TButton", font=('Arial', self.font_size))
+        self.style.configure("TLabel", font=('Arial', self.font_size))
+        self.style.configure("TLabelframe.Label", font=('Arial', self.font_size))
         
         # 更新步驟窗口字體大小
         if self.step_window:
             self.step_window.set_font_size(self.font_size)
+        
+        # 更新命令編輯器字體大小
+        if self.command_editor:
+            self.command_editor.set_font_size(self.font_size)
+        
+        # 重新繪製界面
+        self.root.update_idletasks()
     
     def show_step_window(self) -> None:
         """顯示步驟視窗"""

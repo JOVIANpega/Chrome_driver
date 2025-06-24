@@ -7,9 +7,10 @@ import re
 import difflib
 from typing import List, Tuple, Dict, Any, Optional
 from datetime import datetime
+import time
 
 # 版本信息
-VERSION = "0.6"
+VERSION = "1.0.3"
 VERSION_DATE = "2023-09-21"
 
 # 常量定義
@@ -20,9 +21,9 @@ STEP_WINDOW_HEIGHT = 500
 DEFAULT_WAIT_TIME = 5
 LOG_FILE = "log.txt"
 COMMAND_FILE = "command.txt"
-DEFAULT_FONT_SIZE = 10
+DEFAULT_FONT_SIZE = 12
 MIN_FONT_SIZE = 8
-MAX_FONT_SIZE = 16
+MAX_FONT_SIZE = 18
 
 # 指令類型常量
 CMD_BASIC = "basic"           # 基本操作指令
@@ -103,7 +104,7 @@ def setup_logging() -> None:
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     
-    # 同時輸出到控制台
+    # 同時輸出到控制檯
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
