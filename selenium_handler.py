@@ -1033,6 +1033,8 @@ class SeleniumHandler:
                 return self.type_text(params[0]) if params else False
             elif cmd == "OPEN_URL":
                 return self.open_html_page(params[0]) if params else False
+            elif cmd == "NAVIGATE":  # 添加對 NAVIGATE 命令的支援，映射到 open_html_page
+                return self.open_html_page(params[0]) if params else False
             elif cmd == "VERIFY_TEXT_CONTAINS":
                 return self.verify_text_contains(params[0]) if params else False
             elif cmd == "VERIFY_TEXT_PATTERN":

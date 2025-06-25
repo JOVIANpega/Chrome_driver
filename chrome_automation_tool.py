@@ -138,6 +138,10 @@ class ChromeAutomationTool:
         self.switch_to_editor_button = ttk.Button(buttons_frame, text="命令編輯器", command=self.switch_to_command_editor)
         self.switch_to_editor_button.pack(side=tk.LEFT, padx=5)
         
+        # 新增全螢幕命令編輯器按鈕
+        self.fullscreen_editor_button = ttk.Button(buttons_frame, text="全螢幕編輯器", command=self.show_fullscreen_editor)
+        self.fullscreen_editor_button.pack(side=tk.LEFT, padx=5)
+        
         # 字體大小控制區域
         font_control_frame = ttk.LabelFrame(main_frame, text="文字大小", padding="5")
         font_control_frame.pack(fill=tk.X, pady=5)
@@ -606,6 +610,39 @@ class ChromeAutomationTool:
         except Exception as e:
             logging.error(f"執行命令 {cmd} 時發生錯誤: {str(e)}")
             return False
+    
+    def show_fullscreen_editor(self) -> None:
+        """顯示全螢幕命令編輯器視窗"""
+        # 創建新的頂層視窗
+        editor_window = tk.Toplevel(self.root)
+        editor_window.title("全螢幕命令編輯器")
+        
+        # 獲取螢幕尺寸
+        screen_width = editor_window.winfo_screenwidth()
+        screen_height = editor_window.winfo_screenheight()
+        
+        # 設置視窗大小為全螢幕
+        editor_window.geometry(f"{screen_width}x{screen_height}+0+0")
+        
+        # 創建命令編輯器實例
+        fullscreen_editor = CommandEditor(editor_window, on_execute_commands=self.start_automation)
+        fullscreen_editor.set_font_size(self.font_size)
+        
+        # 添加關閉按鈕
+        close_button = ttk.Button(editor_window, text="關閉全螢幕編輯器", 
+                                command=lambda: self.close_fullscreen_editor(editor_window))
+        close_button.pack(side=tk.BOTTOM, pady=10)
+        
+        # 設置視窗置頂
+        editor_window.lift()
+        editor_window.focus_force()
+        
+        # 綁定Escape鍵關閉視窗
+        editor_window.bind('<Escape>', lambda e: self.close_fullscreen_editor(editor_window))
+    
+    def close_fullscreen_editor(self, editor_window: tk.Toplevel) -> None:
+        """關閉全螢幕編輯器視窗"""
+        editor_window.destroy()
 
 def main() -> None:
     # 建立主視窗

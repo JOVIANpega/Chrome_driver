@@ -10,7 +10,7 @@ from datetime import datetime
 import time
 
 # 版本信息
-VERSION = "1.1.0"
+VERSION = "1.2"
 VERSION_DATE = "2025-06-25"
 
 # 常量定義
