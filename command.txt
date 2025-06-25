@@ -1,14 +1,8 @@
-# 360 Camera 精簡測試命令
-# 測試重點：登入功能與特定字串檢測
-
-# 1. 開啟測試頁面
 TEST_CASE=開啟 360 Camera 測試頁面
 DESCRIPTION=打開本地測試 HTML 檔案並確認頁面載入
 OPEN_URL=web/360_TEST_WEBFILE.html
 WAIT=2
 VERIFY_TEXT_EXISTS=請輸入您的登入資訊
-
-# 2. 測試正確登入
 TEST_CASE=測試正確登入
 DESCRIPTION=使用正確的帳號密碼(admin/Pega#1234)，驗證登入成功
 CLICK_BY_CSS=#loginForm #username
@@ -18,8 +12,6 @@ TYPE=Pega#1234
 CLICK_BY_CSS=#loginForm .login-button
 WAIT=2
 VERIFY_TEXT_EXISTS=登入成功
-
-# 3. 驗證登入後特定字串
 TEST_CASE=驗證登入後特定字串存在
 DESCRIPTION=登入成功後檢查頁面中是否包含特定字串
 WAIT=3

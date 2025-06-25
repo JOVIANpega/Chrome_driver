@@ -124,6 +124,10 @@ class ChromeAutomationTool:
         self.stop_button = ttk.Button(buttons_frame, text="停止", command=self.stop_automation, state=tk.DISABLED)
         self.stop_button.pack(side=tk.LEFT, padx=5)
         
+        # 添加測試按鈕
+        test_button = ttk.Button(buttons_frame, text="測試按鈕", command=lambda: self.add_log("測試按鈕點擊正常"))
+        test_button.pack(side=tk.LEFT, padx=5)
+        
         ttk.Button(buttons_frame, text="清除日誌", command=lambda: self.log_text.delete(1.0, tk.END)).pack(side=tk.LEFT, padx=5)
         
         # 新增顯示步驟窗口按鈕
@@ -395,7 +399,13 @@ class ChromeAutomationTool:
     
     def start_automation(self) -> None:
         """開始自動化測試"""
+        # 添加調試日誌
+        print("開始自動化測試函數被調用")
+        logging.info("開始自動化測試函數被調用")
+        self.add_log("開始自動化測試...")
+        
         if self.is_running:
+            logging.info("自動化測試已在運行中，忽略此次調用")
             return
         
         # 更新 UI 狀態
@@ -414,32 +424,56 @@ class ChromeAutomationTool:
         # 檢查必要檔案
         if not os.path.exists("assets/icon.ico"):
             logging.error("找不到圖示檔案")
+            self.add_log("錯誤: 找不到圖示檔案")
             self.reset_ui()
             return
             
         if not os.path.exists("web/360_TEST_WEBFILE.html"):
             logging.error("找不到測試頁面")
+            self.add_log("錯誤: 找不到測試頁面")
             self.reset_ui()
             return
             
         # 初始化 Selenium
         if not self.selenium_handler:
+            logging.info("創建新的 SeleniumHandler 實例")
             self.selenium_handler = SeleniumHandler()
+        
+        # 確保 chromedriver 路徑正確
+        if not self.selenium_handler.find_chromedriver():
+            logging.error("找不到 chromedriver.exe")
+            self.add_log("錯誤: 找不到 chromedriver.exe")
+            self.reset_ui()
+            return
             
         if not self.selenium_handler.initialize_driver():
             logging.error("初始化 WebDriver 失敗")
+            self.add_log("錯誤: 初始化 WebDriver 失敗")
             self.reset_ui()
             return
             
         if not self.selenium_handler.open_html_page("web/360_TEST_WEBFILE.html"):
             logging.error("開啟測試頁面失敗")
+            self.add_log("錯誤: 開啟測試頁面失敗")
             self.reset_ui()
             return
+        
+        # 添加調試日誌
+        logging.info("準備啟動自動化執行線程")
+        self.add_log("準備啟動自動化執行...")
         
         # 啟動執行緒
         self.current_task = threading.Thread(target=self.run_automation)
         self.current_task.daemon = True
-        self.current_task.start()
+        
+        try:
+            self.current_task.start()
+            logging.info("自動化執行線程已啟動")
+            self.add_log("自動化執行已啟動")
+        except Exception as e:
+            logging.error(f"啟動執行線程時發生錯誤: {str(e)}")
+            self.add_log(f"錯誤: 啟動執行失敗 - {str(e)}")
+            self.reset_ui()
     
     def stop_automation(self) -> None:
         """停止自動化測試"""
