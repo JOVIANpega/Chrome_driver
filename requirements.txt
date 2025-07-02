@@ -1,0 +1,13 @@
+# GUI相關
+customtkinter==5.2.1
+pillow==10.0.0
+
+# 瀏覽器自動化
+playwright==1.40.0
+pytest-playwright==0.4.0
+
+# OCR識別
+pytesseract==0.3.10
+
+# 打包工具
+pyinstaller==6.0.0 

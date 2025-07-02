@@ -1,0 +1,46 @@
+# 複雜測試腳本：本地HTML測試
+# 建立時間: 2023-07-25
+
+# 打開本地HTML文件
+OPEN_URL = file://D:/((Python TOOL/Chrome_E2E助手_V2/web/360_TEST_WEBFILE.html
+
+# 等待頁面載入
+WAIT = 1
+
+# 驗證頁面標題是否存在
+ASSERT_TEXT = 測試網頁
+
+# 條件判斷：如果頁面上有「測試」字樣
+IF_TEXT_EXISTS = 測試
+  # 點擊第一個按鈕
+  CLICK_BY = button:nth-child(1)
+  WAIT = 1
+  # 驗證點擊後結果
+  ASSERT_TEXT = 已點擊按鈕1
+ELSE
+  # 如果找不到「測試」字樣，點擊第二個按鈕
+  CLICK_BY = button:nth-child(2)
+  WAIT = 1
+ENDIF
+
+# 等待2秒
+WAIT = 2
+
+# 再次點擊第一個按鈕
+CLICK_BY = button:nth-child(1)
+WAIT = 1
+
+# 檢查URL是否包含特定字符
+IF_URL_CONTAINS = 360_TEST
+  # URL符合條件
+  ASSERT_TEXT = 測試網頁
+ELSE
+  # URL不符合條件
+  WAIT = 1
+ENDIF
+
+# 等待特定文字出現
+WAIT_FOR_TEXT = 已點擊按鈕
+
+# 測試完成
+WAIT = 1 

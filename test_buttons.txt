@@ -1,0 +1,55 @@
+# 按鈕和表單測試腳本
+# 建立時間: 2023-07-25
+
+# 打開本地HTML測試頁面
+OPEN_URL = file://D:/((Python TOOL/Chrome_E2E助手_V2/web/test_page.html
+
+# 等待頁面載入
+WAIT = 1
+
+# 驗證頁面標題
+ASSERT_TEXT = 自動化測試頁面
+
+# 點擊按鈕1
+CLICK_BY = #button1
+WAIT = 1
+
+# 驗證點擊後結果
+ASSERT_TEXT = 已點擊按鈕1
+
+# 點擊按鈕2
+CLICK_BY = #button2
+WAIT = 1
+
+# 驗證點擊後結果
+ASSERT_TEXT = 已點擊按鈕2
+
+# 顯示隱藏內容
+CLICK_BY = #showHidden
+WAIT = 1
+
+# 條件判斷：檢查隱藏內容是否顯示
+IF_TEXT_EXISTS = 隱藏內容區
+  # 隱藏內容已顯示，點擊隱藏按鈕
+  CLICK_BY = #hideContent
+  WAIT = 1
+ELSE
+  # 隱藏內容未顯示，嘗試再次點擊顯示按鈕
+  CLICK_BY = #showHidden
+  WAIT = 1
+ENDIF
+
+# 填寫表單
+FILL = #username || 測試使用者
+FILL = #email || test@example.com
+WAIT = 1
+
+# 提交表單
+CLICK_BY = form button[type="submit"]
+WAIT = 1
+
+# 驗證表單提交結果
+ASSERT_TEXT = 表單已提交
+
+# 測試完成
+WAIT = 1 

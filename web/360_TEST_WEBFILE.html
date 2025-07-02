@@ -1,0 +1,2032 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360 Camera 測試頁面整合</title>
+    <style>
+        body {
+            font-family: "Segoe UI", "微軟正黑體", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background-color: #00a2e9;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            margin-right: 10px;
+            background-color: white;
+            border-radius: 50%;
+        }
+        
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .sidebar {
+            width: 250px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            overflow-y: auto;
+            padding: 0;
+        }
+        
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+        
+        .nav-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .nav-item {
+            padding: 14px 20px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-left: 4px solid transparent;
+            font-size: 15px;
+        }
+        
+        .nav-item:hover {
+            background-color: #333333;
+            border-left-color: #00a2e9;
+        }
+        
+        .nav-item.active {
+            background-color: #333333;
+            color: #00a2e9;
+            border-left-color: #00a2e9;
+        }
+        
+        .nav-item i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .content-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        /* 以下是各頁面的樣式 */
+        
+        /* 首頁樣式 */
+        .home-page {
+            padding: 30px;
+        }
+        
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .dashboard-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .dashboard-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .dashboard-card h3 {
+            margin-top: 0;
+            color: #00a2e9;
+            font-size: 18px;
+        }
+        
+        .container {
+            border: 1px solid #eee;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            background-color: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        
+        h1, h2 {
+            color: #333;
+        }
+        
+        h1 {
+            font-size: 28px;
+            font-weight: 500;
+            margin-bottom: 25px;
+            color: #00a2e9;
+        }
+        
+        h2 {
+            font-size: 22px;
+            font-weight: 500;
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        /* 憑證頁面樣式 */
+        .certificate-container {
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .cert-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: normal;
+        }
+        
+        .cert-header {
+            color: #0066cc;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .cert-divider {
+            border-top: 1px solid #ccc;
+            margin: 15px 0;
+        }
+        
+        .cert-section {
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .cert-row {
+            display: flex;
+            margin: 4px 0;
+            line-height: 1.5;
+        }
+        
+        .row-label {
+            width: 120px;
+            color: #666;
+        }
+        
+        .row-value {
+            flex: 1;
+        }
+        
+        .download-link {
+            color: #0066cc;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+        
+        .download-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Nokia WebUI 樣式 */
+        .nokia-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .toggle {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #124191;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        .page-section {
+            display: none;
+        }
+        
+        .page-section.active {
+            display: block;
+        }
+
+        .security-warning {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            padding: 20px;
+            background-color: #f9f9fa;
+            color: #333;
+        }
+
+        .warning-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .warning-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .warning-icon {
+            color: #d70022;
+            font-size: 24px;
+            margin-right: 10px;
+        }
+
+        .warning-title {
+            flex: 1;
+            font-size: 17px;
+        }
+
+        .close-button {
+            cursor: pointer;
+            font-size: 20px;
+            color: #666;
+        }
+
+        .warning-text {
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .warning-subtitle {
+            font-size: 15px;
+            margin: 15px 0;
+        }
+
+        .warning-explanation {
+            margin: 10px 0;
+            line-height: 1.5;
+        }
+
+        .more-info-link {
+            color: #0060df;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 0;
+        }
+
+        .warning-box {
+            background-color: #fff;
+            border: 1px solid #d7d7db;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 2px;
+        }
+
+        .warning-box p {
+            margin: 10px 0;
+            line-height: 1.5;
+        }
+
+        .error-code {
+            color: #0060df;
+        }
+
+        .button-group {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .primary-button {
+            background-color: #0060df;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+
+        .secondary-button {
+            background-color: #f9f9fa;
+            border: 1px solid #d7d7db;
+            color: #333;
+            padding: 8px 16px;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+
+        .secondary-button:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* 添加連接狀態的樣式 */
+        .section-content span {
+            font-family: monospace;
+        }
+        
+        /* 添加數值顯示的樣式 */
+        .current-usage {
+            font-family: monospace;
+            color: #333;
+        }
+        
+        /* 添加箭頭圖標的樣式 */
+        .current-usage::before {
+            content: "↑";
+            color: #0060df;
+            margin-right: 5px;
+        }
+        
+        .current-usage.download::before {
+            content: "↓";
+        }
+
+        .login-container {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .login-form {
+            padding: 20px;
+        }
+
+        .login-form h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #666;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            border-color: #0060df;
+            outline: none;
+        }
+
+        /* 密碼驗證提示樣式 */
+        .password-validation {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .validation-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .validation-item.valid {
+            color: #28a745;
+        }
+
+        .validation-item:before {
+            content: "✓";
+            margin-right: 5px;
+            color: #28a745;
+            display: none;
+        }
+
+        .validation-item.valid:before {
+            display: inline;
+        }
+
+        /* 成功提示樣式 */
+        .success-checkmark {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            background: #28a745;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+
+        /* 登入頁面樣式 */
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .login-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .login-header h2 {
+            color: #00a2e9;
+            margin: 0;
+            font-size: 24px;
+            border: none;
+        }
+        
+        .login-form {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+        
+        .form-group input:focus {
+            border-color: #00a2e9;
+            outline: none;
+        }
+        
+        .password-field {
+            position: relative;
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #777;
+        }
+        
+        .login-button {
+            background-color: #00a2e9;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .login-button:hover {
+            background-color: #0088cc;
+        }
+        
+        .login-footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #777;
+            font-size: 14px;
+        }
+        
+        .login-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .login-error {
+            background-color: #ffebee;
+            color: #d32f2f;
+            display: none;
+        }
+        
+        .login-success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            display: none;
+        }
+
+        /* 添加動畫效果 */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        
+        #login-overlay {
+            transition: opacity 0.5s ease;
+        }
+        
+        .login-button {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .login-button::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%);
+            transform-origin: 50% 50%;
+        }
+        
+        .login-button:focus:not(:active)::after {
+            animation: ripple 1s ease-out;
+        }
+        
+        @keyframes ripple {
+            0% { transform: scale(0, 0); opacity: 0.5; }
+            20% { transform: scale(25, 25); opacity: 0.3; }
+            100% { opacity: 0; transform: scale(40, 40); }
+        }
+    </style>
+</head>
+<body>
+    <!-- 登入遮罩 -->
+    <div id="login-overlay">
+        <div class="login-container">
+            <div class="login-header">
+                <h2>360 Camera 管理系統</h2>
+                <p>請輸入您的登入資訊</p>
+            </div>
+            <form class="login-form" id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="username">使用者名稱</label>
+                    <input type="text" id="username" name="username" placeholder="請輸入使用者名稱" required>
+                </div>
+                <div class="form-group">
+                    <div class="password-field">
+                        <label for="password">密碼</label>
+                        <input type="password" id="password" name="password" placeholder="請輸入密碼" required>
+                        <button type="button" class="password-toggle" onclick="togglePassword()">
+                            <i class="fa fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="login-button">登入</button>
+                <div class="login-message login-error" id="loginError">
+                    登入失敗！請檢查您的使用者名稱和密碼。
+                </div>
+                <div class="login-message login-success" id="loginSuccess">
+                    登入成功！正在為您跳轉...
+                </div>
+            </form>
+            <div class="login-footer">
+                <p>預設管理員：admin / Pega#1234</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="header">
+        <div class="logo">360 Camera 測試頁面整合</div>
+        <div>自動化測試環境</div>
+    </div>
+    
+    <div class="main-container">
+        <div class="sidebar">
+            <h3>測試頁面導航</h3>
+            <ul class="nav-list">
+                <li class="nav-item active" data-page="home">首頁</li>
+                <li class="nav-item" data-page="certificate">憑證檢查頁面</li>
+                <li class="nav-item" data-page="nokia-basic">Nokia 基本設定</li>
+                <li class="nav-item" data-page="nokia-cellular">Nokia 網路狀態</li>
+                <li class="nav-item" data-page="nokia-dashboard">Nokia 儀表板</li>
+                <li class="nav-item" data-page="nokia-network">Nokia 網路設定</li>
+                <li class="nav-item" data-page="device-settings">Device Settings</li>
+            </ul>
+        </div>
+        
+        <div class="content-area">
+            <!-- 首頁 -->
+            <div id="home" class="page-section active">
+                <div class="home-page">
+                    <div class="container">
+                        <h1>自動化測試頁面</h1>
+                        <p>這是一個整合了多種測試頁面的環境，用於 Chrome 自動化工具的測試。請從左側選擇要測試的頁面。</p>
+                        
+                        <div id="customText">
+                            <!-- Custom Text Start -->
+（中央社記者辜泳秝斯德哥爾摩20日專電）「挪威國家廣播公司」（NRK）專訪副總統蕭美琴，稱她為「台灣戰貓」，是亞洲最有權力的女性之一，並且在世界上數一數二危險的衝突中試圖找到平衡。報導中也針對台海關係做了詳盡解釋分析。
+
+「挪威國家廣播公司」（NRK）的國際事務分析節目Urix日前專訪蕭副總統，18日晚間在挪威TV2頻道首播。
+
+節目一開始便解釋，世界上風險最高的危機可能就是美國與中國因為台灣的未來直接正面衝突，並介紹蕭美琴結束台灣派駐美國代表的職務，回到台灣協助賴清德贏得總統大選。
+
+節目稱蕭副總統為「台灣的戰貓」，是亞洲少數在權力頂端的女性，也是直接處理、面對世界上最困難、敏感的未解衝突的主要負責人之一。
+                            <!-- Custom Text End -->
+                        </div>
+                        
+                        <h2>登入表單</h2>
+                        <div>
+                            <label for="username">使用者名稱：</label>
+                            <input type="text" id="username" placeholder="請輸入使用者名稱">
+                        </div>
+                        <div>
+                            <label for="password">密碼：</label>
+                            <input type="password" id="password" placeholder="請輸入密碼">
+                        </div>
+                        <button id="login-button">登入</button>
+                        <div id="login-result" class="result"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 憑證檢查頁面 -->
+            <div id="certificate" class="page-section">
+                <!-- 安全性警告頁面 -->
+                <div class="security-warning">
+                    <div class="warning-content">
+                        <div class="warning-header">
+                            <span class="warning-icon">⚠</span>
+                            <span class="warning-title">警告: 本網站可能有安全性風險</span>
+                            <span class="close-button">×</span>
+                        </div>
+                        
+                        <div class="warning-body">
+                            <p class="warning-text">Firefox 偵測到可能有安全性風險，並未連線至 192.168.1.252。若繼續造訪此網站，攻擊者可能會嘗試偷走您的密碼、電子郵件或信用卡資料等個資。</p>
+                            
+                            <h3 class="warning-subtitle">您可以做什麼？</h3>
+                            <p class="warning-explanation">這個問題最有可能是由於網站端的設定不正確，無法由您調整設定來解決。</p>
+                            <p class="warning-explanation">若目前連線到企業內部網路，或有使用防毒軟體，請洽詢技術支援團隊，也可以通知網站管理員處理這個問題。</p>
+                            
+                            <a href="#" class="more-info-link">更多資訊...</a>
+                            
+                            <div class="warning-box">
+                                <p>有心人士可能正在嘗試將您導向的網站偽裝成您想造訪的網站，不應繼續開啟。</p>
+                                <p>網站會透過憑證來證明自己的身分，因為簽發者未知，憑證是自簽憑證，或伺服器並未送出正確的中介憑證，Firefox 無法位於 192.168.1.252:8443。</p>
+                                <p>錯誤碼：<span class="error-code">SEC_ERROR_UNKNOWN_ISSUER</span></p>
+                            </div>
+                            
+                            <div class="button-group">
+                                <button class="primary-button">返回上一頁（建議）</button>
+                                <button class="secondary-button" id="advanced-button">進階...</button>
+                                <button class="secondary-button" id="view-cert-button">檢視憑證</button>
+                                <button class="secondary-button">接受風險並繼續</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 原有的憑證內容 -->
+                <div class="certificate-container" style="display: none;">
+                    <h1 class="cert-title">憑證</h1>
+                    
+                    <div class="cert-header">Nokia 360 Camera</div>
+                    <div class="cert-divider"></div>
+                    
+                    <div class="cert-section">
+                        <div class="section-title">主體名稱</div>
+                        <div class="cert-row">
+                            <div class="row-label">組織</div>
+                            <div class="row-value">Nokia</div>
+                        </div>
+                        <div class="cert-row">
+                            <div class="row-label">一般名稱</div>
+                            <div class="row-value">Nokia 360 Camera</div>
+                        </div>
+                    </div>
+                    
+                    <div class="cert-section">
+                        <div class="section-title">發發者名稱</div>
+                        <div class="cert-row">
+                            <div class="row-label">組織</div>
+                            <div class="row-value">Nokia</div>
+                        </div>
+                        <div class="cert-row">
+                            <div class="row-label">一般名稱</div>
+                            <div class="row-value">SW Factory Certification Authority</div>
+                        </div>
+                    </div>
+                    
+                    <div class="cert-section">
+                        <div class="section-title">有效期</div>
+                        <div class="cert-row">
+                            <div class="row-label">不早於</div>
+                            <div class="row-value">Tue, 17 Dec 2024 07:14:58 GMT</div>
+                        </div>
+                        <div class="cert-row">
+                            <div class="row-label">不晚於</div>
+                            <div class="row-value">Mon, 12 Dec 2044 07:14:58 GMT</div>
+                        </div>
+                    </div>
+                    
+                    <div class="cert-section">
+                        <div class="section-title">公鑰資訊</div>
+                        <div class="cert-row">
+                            <div class="row-label">Algorithm</div>
+                            <div class="row-value">RSA</div>
+                        </div>
+                        <div class="cert-row">
+                            <div class="row-label">Key Size</div>
+                            <div class="row-value">2048</div>
+                        </div>
+                        <div class="cert-row">
+                            <div class="row-label">Exponent</div>
+                            <div class="row-value">65537</div>
+                        </div>
+                        <div class="cert-row">
+                            <div class="row-label">Modulus</div>
+                            <div class="row-value">9E:00:ED:17:46:C9:7C:5B:CF:D1:31:BB:28:99:86:71:6D:C6:7E:72:95:64:F7:DE...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="cert-section">
+                        <div class="section-title">其他</div>
+                        <div class="cert-row">
+                            <div class="row-label">序號</div>
+                            <div class="row-value">09:AB:EE:01</div>
+                        </div>
+                        <div class="cert-row">
+                            <div class="row-label">簽章演算法</div>
+                            <div class="row-value">SHA-256 with RSA Encryption</div>
+                        </div>
+                        <div class="cert-row">
+                            <div class="row-label">版本</div>
+                            <div class="row-value">3</div>
+                        </div>
+                    </div>
+                    
+                    <div class="cert-section">
+                        <div class="cert-row">
+                            <div class="row-label">下載</div>
+                            <div class="row-value">
+                                <a href="#" class="download-link">PEM (cert)</a>
+                                <a href="#" class="download-link">PEM (chain)</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Nokia 基本設定頁面 -->
+            <div id="nokia-basic" class="page-section">
+                <div class="nokia-container">
+                    <div class="content">
+                        <h1>Basic Settings</h1>
+                        
+                        <div class="form-group">
+                            <label for="hostname">Host Name</label>
+                            <input type="text" id="hostname" value="Nokia-5G-Router" />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="routing-priority">Routing Priority</label>
+                            <select id="routing-priority">
+                                <option value="wired">Wired</option>
+                                <option value="wireless">Wireless</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Enable 5G</label>
+                            <label class="toggle">
+                                <input type="checkbox" id="enable-5g" checked>
+                                <span class="slider"></span>
+                            </label>
+                            <span id="toggle-status">ON</span>
+                        </div>
+                        
+                        <button id="nokia-apply-button">Apply</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Nokia Cellular Info 頁面 -->
+            <div id="nokia-cellular" class="page-section">
+                <div class="nokia-container">
+                    <div class="nokia-header">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MDAgMTAwIj48cGF0aCBmaWxsPSIjMDA1MWQzIiBkPSJNNDEuNiw1NC44TDIzLjcsMzYuOWwxNy45LTE3LjloNi40TDI5LjksMzcuMWwxOCwxNy43SDQxLjZ6IE01Mi45LDU0LjhMMzUsMzYuOWwxNy45LTE3LjloNi40TDQxLjIsMzcuMWwxOCwxNy43SDUyLjl6Ii8+PC9zdmc+" alt="Nokia Logo" class="nokia-logo">
+                        <h1>Cellular Network Information and Status</h1>
+                    </div>
+
+                    <div class="page-description">
+                        Cellular networking utilizes a cellphone network for internet access.
+                    </div>
+
+                    <div class="settings-section">
+                        <h2>Local Information</h2>
+                        <div class="info-grid">
+                            <div class="info-row">
+                                <div class="info-label">Module firmware revision</div>
+                                <div class="info-value">22131B02X62M44A-M2_PCIE_CUS_HS</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">International mobile equipment identity (IMEI)</div>
+                                <div class="info-value">863137060033632</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">SIM card status</div>
+                                <div class="info-value">SIM READY</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Integrated circuit card identifier (ICCID)</div>
+                                <div class="info-value">89886920041037407985</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">International mobile subscriber identity (IMSI)</div>
+                                <div class="info-value">466924103740798</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Mobile station international subscriber directory number (MSISDN)</div>
+                                <div class="info-value">Not Set</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h2>Current Connection Status</h2>
+                        <div class="info-grid">
+                            <div class="info-row">
+                                <div class="info-label">Type of cellular connection</div>
+                                <div class="info-value">LTE</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Service Provider</div>
+                                <div class="info-value">Chunghwa Telecom</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Mobile Country Code (MCC)</div>
+                                <div class="info-value">466</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Mobile Network Code (MNC)</div>
+                                <div class="info-value">92</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard Section -->
+                    <div class="settings-section">
+                        <div class="location-info">
+                            <div class="searching">Searching...</div>
+                            <div class="coordinates">
+                                <span>LATITUDE</span>
+                                <span>LONGTITUDE</span>
+                                <span>ELEVATON</span>
+                            </div>
+                        </div>
+
+                        <div class="network-status">
+                            <div class="network-tabs">
+                                <button class="tab-button active">Ethernet</button>
+                                <button class="tab-button">Cellular</button>
+                                <button class="tab-button">WiFi</button>
+                            </div>
+
+                            <div class="network-info">
+                                <div class="ethernet-info">
+                                    <div class="info-section">
+                                        <div class="section-header">
+                                            <span>CONNECTION STATUS</span>
+                                            <span>INTERFACE</span>
+                                        </div>
+                                        <div class="section-content">
+                                            <span>Connected/STATIC</span>
+                                            <span>eth0</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="info-section">
+                                        <div class="section-header">
+                                            <span>IP ADDRESS</span>
+                                            <span>MAC ADDRESS</span>
+                                        </div>
+                                        <div class="section-content">
+                                            <span>192.168.11.143</span>
+                                            <span>EA:93:E9:06:30:A6</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="info-section">
+                                        <div class="section-header">
+                                            <span>GATEWAY</span>
+                                            <span>DUPLEX MODE</span>
+                                        </div>
+                                        <div class="section-content">
+                                            <span>192.168.11.1</span>
+                                            <span>Full Duplex</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="info-section">
+                                        <div class="section-header">
+                                            <span>DNS1</span>
+                                            <span>LINK BITRATE</span>
+                                        </div>
+                                        <div class="section-content">
+                                            <span></span>
+                                            <span>1000Mbps</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="info-section">
+                                        <div class="section-header">
+                                            <span>DNS2</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="info-section">
+                                        <div class="section-header">
+                                            <span>CURRENT USAGE</span>
+                                        </div>
+                                        <div class="section-content">
+                                            <span>↑ 43060159Bytes | ↓ 13349886Bytes</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="cellular-info">
+                                    <div class="info-section">
+                                        <div class="section-header">
+                                            <span>PDP TYPE</span>
+                                        </div>
+                                        <div class="section-content">
+                                            <span>IPv4/IPv6</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="info-section">
+                                        <div class="section-header">
+                                            <span>IP ADDRESS</span>
+                                            <span>IPV6 ADDRESS</span>
+                                        </div>
+                                        <div class="section-content">
+                                            <span>192.168.2.2</span>
+                                            <span></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="info-section">
+                                        <div class="section-header">
+                                            <span>GATEWAY</span>
+                                            <span>IPV6 GATEWAY</span>
+                                        </div>
+                                        <div class="section-content">
+                                            <span>192.168.2.1</span>
+                                            <span></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="info-section">
+                                        <div class="section-header">
+                                            <span>CURRENT USAGE</span>
+                                        </div>
+                                        <div class="section-content">
+                                            <span>↑ 4781156Bytes | ↓ 4767988Bytes</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <style>
+                    .info-grid {
+                        display: grid;
+                        gap: 15px;
+                    }
+
+                    .info-row {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 20px;
+                    }
+
+                    .info-label {
+                        color: #666;
+                    }
+
+                    .info-value {
+                        font-family: monospace;
+                    }
+
+                    .location-info {
+                        background: #f5f5f5;
+                        padding: 15px;
+                        margin-bottom: 20px;
+                    }
+
+                    .searching {
+                        margin-bottom: 10px;
+                    }
+
+                    .coordinates {
+                        display: flex;
+                        justify-content: space-between;
+                        color: #0060df;
+                    }
+
+                    .network-tabs {
+                        display: flex;
+                        gap: 2px;
+                        margin-bottom: 20px;
+                    }
+
+                    .tab-button {
+                        padding: 10px 20px;
+                        border: none;
+                        background: #f0f0f0;
+                        cursor: pointer;
+                    }
+
+                    .tab-button.active {
+                        background: #0060df;
+                        color: white;
+                    }
+
+                    .network-info {
+                        display: grid;
+                        gap: 20px;
+                    }
+
+                    .info-section {
+                        margin-bottom: 15px;
+                    }
+
+                    .section-header {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                        gap: 20px;
+                        color: #0060df;
+                        margin-bottom: 5px;
+                    }
+
+                    .section-content {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                        gap: 20px;
+                    }
+
+                    .cellular-info {
+                        display: none;
+                    }
+                </style>
+            </div>
+            
+            <!-- Nokia 儀表板頁面 -->
+            <div id="nokia-dashboard" class="page-section">
+                <div class="nokia-container">
+                    <div class="content">
+                        <h1>Dashboard</h1>
+                        
+                        <div class="dashboard-row">
+                            <div class="dashboard-col">
+                                <div class="dashboard-card">
+                                    <h2>Connection Status</h2>
+                                    <div>
+                                        <span class="status-indicator status-connected"></span>
+                                        <strong>Connected/Static</strong>
+                                    </div>
+                                    <div style="margin-top: 10px;">
+                                        <strong>IP Address:</strong> 192.168.2.2
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="dashboard-col">
+                                <div class="dashboard-card">
+                                    <h2>Channel Usage</h2>
+                                    <div>16.70 %</div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 16.7%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="dashboard-col">
+                                <div class="dashboard-card">
+                                    <h2>Memory Used</h2>
+                                    <div>210 MB / 3429 MB</div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 6.12%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="dashboard-col">
+                                <div class="dashboard-card">
+                                    <h2>Quick Actions</h2>
+                                    <button id="nokia-goto-settings">Go to Settings</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Nokia 網路設定頁面 -->
+            <div id="nokia-network" class="page-section">
+                <div class="nokia-container">
+                    <div class="nokia-header">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MDAgMTAwIj48cGF0aCBmaWxsPSIjMDA1MWQzIiBkPSJNNDEuNiw1NC44TDIzLjcsMzYuOWwxNy45LTE3LjloNi40TDI5LjksMzcuMWwxOCwxNy43SDQxLjZ6IE01Mi45LDU0LjhMMzUsMzYuOWwxNy45LTE3LjloNi40TDQxLjIsMzcuMWwxOCwxNy43SDUyLjl6Ii8+PC9zdmc+" alt="Nokia Logo" class="nokia-logo">
+                        <h1>Network & Internet</h1>
+                    </div>
+
+                    <div class="page-description">
+                        The Network & Internet page allows you to configure your network and internet parameters.
+                    </div>
+
+                    <div class="settings-section">
+                        <h2>Network parameter settings</h2>
+                        
+                        <div class="setting-group">
+                            <div class="setting-item">
+                                <label for="hostname">Host Name</label>
+                                <input type="text" id="hostname" value="NOKIA360Camera-WE25130025" readonly>
+                            </div>
+
+                            <div class="setting-item">
+                                <label>Routing Priority</label>
+                                <div class="button-group">
+                                    <button class="toggle-button active">Wired</button>
+                                    <button class="toggle-button">Wireless</button>
+                                </div>
+                            </div>
+
+                            <div class="setting-item">
+                                <label>Wireless</label>
+                                <div class="button-group">
+                                    <button class="toggle-button active">5G</button>
+                                    <button class="toggle-button">Wi-Fi</button>
+                                    <button class="toggle-button">OFF</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h2>DNS</h2>
+                        <div class="dns-settings">
+                            <!-- DNS settings will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <style>
+                    .nokia-container {
+                        padding: 20px;
+                        background-color: #f5f5f5;
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+                    }
+
+                    .nokia-header {
+                        display: flex;
+                        align-items: center;
+                        margin-bottom: 30px;
+                    }
+
+                    .nokia-logo {
+                        height: 40px;
+                        margin-right: 20px;
+                    }
+
+                    .nokia-header h1 {
+                        color: #333;
+                        font-size: 24px;
+                        font-weight: normal;
+                    }
+
+                    .page-description {
+                        color: #666;
+                        margin-bottom: 30px;
+                        line-height: 1.5;
+                    }
+
+                    .settings-section {
+                        background: white;
+                        border-radius: 4px;
+                        padding: 20px;
+                        margin-bottom: 20px;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    }
+
+                    .settings-section h2 {
+                        color: #333;
+                        font-size: 18px;
+                        font-weight: normal;
+                        margin-bottom: 20px;
+                    }
+
+                    .setting-group {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 20px;
+                    }
+
+                    .setting-item {
+                        display: flex;
+                        align-items: center;
+                        gap: 20px;
+                    }
+
+                    .setting-item label {
+                        width: 150px;
+                        color: #333;
+                    }
+
+                    .setting-item input[type="text"] {
+                        flex: 1;
+                        padding: 8px 12px;
+                        border: 1px solid #ddd;
+                        border-radius: 4px;
+                        font-size: 14px;
+                        background-color: #f9f9f9;
+                    }
+
+                    .button-group {
+                        display: flex;
+                        gap: 2px;
+                    }
+
+                    .toggle-button {
+                        padding: 8px 16px;
+                        border: none;
+                        background-color: #f0f0f0;
+                        color: #333;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                    }
+
+                    .toggle-button:first-child {
+                        border-top-left-radius: 4px;
+                        border-bottom-left-radius: 4px;
+                    }
+
+                    .toggle-button:last-child {
+                        border-top-right-radius: 4px;
+                        border-bottom-right-radius: 4px;
+                    }
+
+                    .toggle-button.active {
+                        background-color: #0060df;
+                        color: white;
+                    }
+
+                    .toggle-button:hover:not(.active) {
+                        background-color: #e0e0e0;
+                    }
+                </style>
+            </div>
+
+            <!-- Device Settings 頁面 -->
+            <div id="device-settings" class="page-section">
+                <div class="nokia-container">
+                    <div class="nokia-header">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MDAgMTAwIj48cGF0aCBmaWxsPSIjMDA1MWQzIiBkPSJNNDEuNiw1NC44TDIzLjcsMzYuOWwxNy45LTE3LjloNi40TDI5LjksMzcuMWwxOCwxNy43SDQxLjZ6IE01Mi45LDU0LjhMMzUsMzYuOWwxNy45LTE3LjloNi40TDQxLjIsMzcuMWwxOCwxNy43SDUyLjl6Ii8+PC9zdmc+" alt="Nokia Logo" class="nokia-logo">
+                        <h1>Device Settings</h1>
+                    </div>
+
+                    <!-- Restore 部分 -->
+                    <div class="settings-section">
+                        <h2>Restore</h2>
+                        <div class="settings-content">
+                            <p>The Restore page let you reset the camera back to factory default. If you want to reset all settings of the device, and if still experiencing problems, reset the camera back to factory default.</p>
+                            
+                            <div class="reset-section">
+                                <h3>Reset Default</h3>
+                                <p>Revert all the settings to factory default</p>
+                                <button class="reset-button" onclick="showResetWarning()">Reset Default</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Change Admin Password 部分 -->
+                    <div class="settings-section">
+                        <h2>Change Admin Password</h2>
+                        <div class="settings-content">
+                            <p>The administration function allows you to change the login password for the camera's Web UI. It's essential to change this password for the security of your camera. Use hard-to-guess password, which should include combinations of numbers, letters and symbols, and change your password regularly.</p>
+                            
+                            <div class="password-form">
+                                <div class="form-group">
+                                    <label>Current Password</label>
+                                    <div class="password-input">
+                                        <input type="password" id="currentPassword">
+                                        <button class="toggle-password" onclick="togglePassword('currentPassword')">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>New Password</label>
+                                    <div class="password-input">
+                                        <input type="password" id="newPassword">
+                                        <button class="toggle-password" onclick="togglePassword('newPassword')">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Confirm New Password</label>
+                                    <div class="password-input">
+                                        <input type="password" id="confirmPassword">
+                                        <button class="toggle-password" onclick="togglePassword('confirmPassword')">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="button-group">
+                                    <button class="cancel-button" onclick="cancelPasswordChange()">Cancel</button>
+                                    <button class="apply-button" onclick="applyPasswordChange()">Apply</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reset Warning Modal -->
+                <div id="resetWarningModal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Warning</h2>
+                            <span class="close" onclick="closeResetWarning()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <p>Loading the factory default settings will erase all the current settings. Are you sure you want to do this?</p>
+                            <div class="button-group">
+                                <button class="cancel-button" onclick="closeResetWarning()">NO</button>
+                                <button class="danger-button" onclick="confirmReset()">YES</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading Modal -->
+                <div id="loadingModal" class="modal">
+                    <div class="modal-content loading-content">
+                        <div class="loading-spinner"></div>
+                        <p>Please wait for a while to restart the device...</p>
+                        <div class="progress-bar">
+                            <div class="progress"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <style>
+                    .settings-section {
+                        margin-bottom: 30px;
+                        background: #fff;
+                        padding: 20px;
+                        border-radius: 4px;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    }
+
+                    .settings-content {
+                        margin-top: 15px;
+                    }
+
+                    .reset-button {
+                        background: #0060df;
+                        color: white;
+                        border: none;
+                        padding: 8px 20px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                    }
+
+                    .password-form {
+                        max-width: 500px;
+                    }
+
+                    .form-group {
+                        margin-bottom: 20px;
+                    }
+
+                    .password-input {
+                        position: relative;
+                        display: flex;
+                        align-items: center;
+                    }
+
+                    .password-input input {
+                        width: 100%;
+                        padding: 8px;
+                        border: 1px solid #ddd;
+                        border-radius: 4px;
+                    }
+
+                    .toggle-password {
+                        position: absolute;
+                        right: 10px;
+                        background: none;
+                        border: none;
+                        cursor: pointer;
+                    }
+
+                    .button-group {
+                        display: flex;
+                        gap: 10px;
+                        justify-content: flex-end;
+                        margin-top: 20px;
+                    }
+
+                    .cancel-button {
+                        background: #666;
+                        color: white;
+                        border: none;
+                        padding: 8px 20px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                    }
+
+                    .apply-button {
+                        background: #0060df;
+                        color: white;
+                        border: none;
+                        padding: 8px 20px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                    }
+
+                    .danger-button {
+                        background: #d70022;
+                        color: white;
+                        border: none;
+                        padding: 8px 20px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                    }
+
+                    .modal {
+                        display: none;
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0,0,0,0.5);
+                        z-index: 1000;
+                    }
+
+                    .modal-content {
+                        background: white;
+                        margin: 15% auto;
+                        padding: 20px;
+                        width: 80%;
+                        max-width: 500px;
+                        border-radius: 4px;
+                    }
+
+                    .modal-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 20px;
+                    }
+
+                    .close {
+                        font-size: 24px;
+                        cursor: pointer;
+                    }
+
+                    .loading-content {
+                        text-align: center;
+                    }
+
+                    .loading-spinner {
+                        border: 4px solid #f3f3f3;
+                        border-top: 4px solid #0060df;
+                        border-radius: 50%;
+                        width: 40px;
+                        height: 40px;
+                        animation: spin 1s linear infinite;
+                        margin: 0 auto 20px;
+                    }
+
+                    .progress-bar {
+                        width: 100%;
+                        height: 4px;
+                        background: #f3f3f3;
+                        margin-top: 20px;
+                        border-radius: 2px;
+                        overflow: hidden;
+                    }
+
+                    .progress {
+                        width: 0%;
+                        height: 100%;
+                        background: #0060df;
+                        transition: width 10s linear;
+                    }
+
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                </style>
+
+                <script>
+                    function showResetWarning() {
+                        document.getElementById('resetWarningModal').style.display = 'block';
+                    }
+
+                    function closeResetWarning() {
+                        document.getElementById('resetWarningModal').style.display = 'none';
+                    }
+
+                    function confirmReset() {
+                        closeResetWarning();
+                        document.getElementById('loadingModal').style.display = 'block';
+                        document.querySelector('.progress').style.width = '100%';
+                        
+                        // 10秒後自動關閉加載視窗
+                        setTimeout(() => {
+                            document.getElementById('loadingModal').style.display = 'none';
+                            document.querySelector('.progress').style.width = '0%';
+                        }, 10000);
+                    }
+
+                    function togglePassword(inputId) {
+                        const input = document.getElementById(inputId);
+                        input.type = input.type === 'password' ? 'text' : 'password';
+                    }
+
+                    function cancelPasswordChange() {
+                        // 清空所有密碼輸入
+                        document.getElementById('currentPassword').value = '';
+                        document.getElementById('newPassword').value = '';
+                        document.getElementById('confirmPassword').value = '';
+                    }
+
+                    function applyPasswordChange() {
+                        const currentPassword = document.getElementById('currentPassword').value;
+                        const newPassword = document.getElementById('newPassword').value;
+                        const confirmPassword = document.getElementById('confirmPassword').value;
+
+                        if (!currentPassword || !newPassword || !confirmPassword) {
+                            alert('Please fill in all password fields');
+                            return;
+                        }
+
+                        if (newPassword !== confirmPassword) {
+                            alert('New passwords do not match');
+                            return;
+                        }
+
+                        // 模擬密碼更改成功
+                        alert('Password changed successfully');
+                        cancelPasswordChange();
+                    }
+                </script>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 獲取所有需要的元素
+            const advancedButton = document.getElementById('advanced-button');
+            const viewCertButton = document.getElementById('view-cert-button');
+            const certificateContainer = document.querySelector('.certificate-container');
+            const securityWarning = document.querySelector('.security-warning');
+            
+            // 初始化頁面狀態
+            function initializeCertificatePage() {
+                if (certificateContainer) {
+                    certificateContainer.style.display = 'none';
+                }
+                if (securityWarning) {
+                    securityWarning.style.display = 'block';
+                }
+            }
+            
+            // 初始化頁面
+            initializeCertificatePage();
+            
+            // 處理所有按鈕點擊事件
+            document.addEventListener('click', function(event) {
+                // 檢視憑證按鈕
+                if (event.target.id === 'view-cert-button' || 
+                    event.target.classList.contains('view-certificate-button')) {
+                    if (securityWarning) {
+                        securityWarning.style.display = 'none';
+                    }
+                    if (certificateContainer) {
+                        certificateContainer.style.display = 'block';
+                    }
+                }
+                
+                // 進階按鈕
+                if (event.target.id === 'advanced-button') {
+                    const warningBox = document.querySelector('.warning-box');
+                    if (warningBox) {
+                        warningBox.style.display = warningBox.style.display === 'none' ? 'block' : 'none';
+                    }
+                }
+                
+                // 返回上一頁按鈕
+                if (event.target.classList.contains('primary-button')) {
+                    // 重置為初始狀態
+                    initializeCertificatePage();
+                }
+                
+                // 接受風險並繼續按鈕
+                if (event.target.textContent.includes('接受風險')) {
+                    if (securityWarning) {
+                        securityWarning.style.display = 'none';
+                    }
+                    if (certificateContainer) {
+                        certificateContainer.style.display = 'block';
+                    }
+                }
+            });
+            
+            // 初始化導航項目點擊事件
+            const navItems = document.querySelectorAll('.nav-item');
+            const pageSections = document.querySelectorAll('.page-section');
+            
+            navItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    // 移除所有導航項目的 active 類
+                    navItems.forEach(i => i.classList.remove('active'));
+                    // 為當前點擊的導航項目添加 active 類
+                    this.classList.add('active');
+                    
+                    // 隱藏所有頁面
+                    pageSections.forEach(section => section.classList.remove('active'));
+                    
+                    // 顯示對應的頁面
+                    const targetPage = document.getElementById(this.dataset.page);
+                    if (targetPage) {
+                        targetPage.classList.add('active');
+                        
+                        // 如果是憑證頁面，重置為初始狀態
+                        if (this.dataset.page === 'certificate') {
+                            initializeCertificatePage();
+                        }
+                    }
+                });
+            });
+            
+            // 處理更多資訊連結
+            const moreInfoLink = document.querySelector('.more-info-link');
+            if (moreInfoLink) {
+                moreInfoLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const warningBox = document.querySelector('.warning-box');
+                    if (warningBox) {
+                        warningBox.style.display = warningBox.style.display === 'none' ? 'block' : 'none';
+                    }
+                });
+            }
+            
+            // 處理關閉按鈕
+            const closeButton = document.querySelector('.close-button');
+            if (closeButton) {
+                closeButton.addEventListener('click', function() {
+                    // 返回到上一頁或隱藏警告
+                    initializeCertificatePage();
+                });
+            }
+
+            // 處理網路設定頁面的按鈕組
+            const buttonGroups = document.querySelectorAll('.button-group');
+            buttonGroups.forEach(group => {
+                const buttons = group.querySelectorAll('.toggle-button');
+                buttons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        // 移除同組中其他按鈕的 active 狀態
+                        buttons.forEach(b => b.classList.remove('active'));
+                        // 為當前按鈕添加 active 狀態
+                        this.classList.add('active');
+                        
+                        // 如果是無線按鈕組，處理特殊邏輯
+                        if (this.textContent === 'OFF') {
+                            // 禁用路由優先級中的 Wireless 選項
+                            const routingButtons = document.querySelectorAll('.button-group')[0];
+                            if (routingButtons) {
+                                const wirelessButton = Array.from(routingButtons.querySelectorAll('.toggle-button'))
+                                    .find(b => b.textContent === 'Wireless');
+                                if (wirelessButton) {
+                                    wirelessButton.classList.remove('active');
+                                    wirelessButton.disabled = true;
+                                    wirelessButton.style.opacity = '0.5';
+                                }
+                            }
+                        } else if (this.textContent === '5G' || this.textContent === 'Wi-Fi') {
+                            // 啟用路由優先級中的 Wireless 選項
+                            const routingButtons = document.querySelectorAll('.button-group')[0];
+                            if (routingButtons) {
+                                const wirelessButton = Array.from(routingButtons.querySelectorAll('.toggle-button'))
+                                    .find(b => b.textContent === 'Wireless');
+                                if (wirelessButton) {
+                                    wirelessButton.disabled = false;
+                                    wirelessButton.style.opacity = '1';
+                                }
+                            }
+                        }
+                    });
+                });
+            });
+
+            // 標籤頁切換功能
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const ethernetInfo = document.querySelector('.ethernet-info');
+            const cellularInfo = document.querySelector('.cellular-info');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // 移除所有標籤的 active 類
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    
+                    // 添加當前標籤的 active 類
+                    this.classList.add('active');
+                    
+                    // 根據選中的標籤顯示相應的內容
+                    if (this.textContent === 'Ethernet') {
+                        ethernetInfo.style.display = 'block';
+                        cellularInfo.style.display = 'none';
+                    } else if (this.textContent === 'Cellular') {
+                        ethernetInfo.style.display = 'none';
+                        cellularInfo.style.display = 'block';
+                    } else {
+                        ethernetInfo.style.display = 'none';
+                        cellularInfo.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // 模擬網路狀態更新
+        function updateNetworkStatus() {
+            // 乙太網路狀態更新
+            const ethernetStatus = {
+                connected: true,
+                ipAddress: '192.168.11.143',
+                macAddress: 'EA:93:E9:06:30:A6',
+                gateway: '192.168.11.1',
+                uploadBytes: Math.floor(Math.random() * 1000000) + 43000000,
+                downloadBytes: Math.floor(Math.random() * 1000000) + 13000000
+            };
+
+            // 行動網路狀態更新
+            const cellularStatus = {
+                connected: true,
+                ipAddress: '192.168.2.2',
+                gateway: '192.168.2.1',
+                uploadBytes: Math.floor(Math.random() * 1000000) + 4700000,
+                downloadBytes: Math.floor(Math.random() * 1000000) + 4700000
+            };
+
+            // 更新乙太網路資訊
+            if (ethernetStatus.connected) {
+                document.querySelector('.ethernet-info .section-content:nth-child(1)').innerHTML = 
+                    `<span>Connected/STATIC</span><span>eth0</span>`;
+                
+                document.querySelector('.ethernet-info .section-content:nth-child(2)').innerHTML = 
+                    `<span>${ethernetStatus.ipAddress}</span><span>${ethernetStatus.macAddress}</span>`;
+                
+                document.querySelector('.ethernet-info .section-content:nth-child(3)').innerHTML = 
+                    `<span>${ethernetStatus.gateway}</span><span>Full Duplex</span>`;
+                
+                document.querySelector('.ethernet-info .section-content:last-child').innerHTML = 
+                    `<span>↑ ${ethernetStatus.uploadBytes}Bytes | ↓ ${ethernetStatus.downloadBytes}Bytes</span>`;
+            }
+
+            // 更新行動網路資訊
+            if (cellularStatus.connected) {
+                document.querySelector('.cellular-info .section-content:nth-child(1)').innerHTML = 
+                    `<span>IPv4/IPv6</span>`;
+                
+                document.querySelector('.cellular-info .section-content:nth-child(2)').innerHTML = 
+                    `<span>${cellularStatus.ipAddress}</span><span></span>`;
+                
+                document.querySelector('.cellular-info .section-content:nth-child(3)').innerHTML = 
+                    `<span>${cellularStatus.gateway}</span><span></span>`;
+                
+                document.querySelector('.cellular-info .section-content:last-child').innerHTML = 
+                    `<span>↑ ${cellularStatus.uploadBytes}Bytes | ↓ ${cellularStatus.downloadBytes}Bytes</span>`;
+            }
+        }
+
+        // 每秒更新一次網路狀態
+        setInterval(updateNetworkStatus, 1000);
+
+        // 初始化頁面時立即更新一次
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNetworkStatus();
+            
+            // 標籤頁切換功能
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const ethernetInfo = document.querySelector('.ethernet-info');
+            const cellularInfo = document.querySelector('.cellular-info');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // 移除所有標籤的 active 類
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    
+                    // 添加當前標籤的 active 類
+                    this.classList.add('active');
+                    
+                    // 根據選中的標籤顯示相應的內容
+                    if (this.textContent === 'Ethernet') {
+                        ethernetInfo.style.display = 'block';
+                        cellularInfo.style.display = 'none';
+                    } else if (this.textContent === 'Cellular') {
+                        ethernetInfo.style.display = 'none';
+                        cellularInfo.style.display = 'block';
+                    } else {
+                        ethernetInfo.style.display = 'none';
+                        cellularInfo.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // 默認憑證
+        const defaultCredentials = {
+            username: 'admin',
+            password: 'Pega#1234'
+        };
+        
+        // 處理登入
+        function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const loginError = document.getElementById('loginError');
+            const loginSuccess = document.getElementById('loginSuccess');
+            const loginButton = document.querySelector('.login-button');
+            
+            // 重置訊息
+            loginError.style.display = 'none';
+            loginSuccess.style.display = 'none';
+            
+            // 登入按鈕狀態
+            loginButton.disabled = true;
+            loginButton.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 處理中...';
+            
+            // 模擬網路延遲
+            setTimeout(() => {
+                if (username === defaultCredentials.username && password === defaultCredentials.password) {
+                    // 登入成功
+                    loginSuccess.style.display = 'block';
+                    
+                    // 延遲後移除登入遮罩
+                    setTimeout(() => {
+                        document.getElementById('login-overlay').style.opacity = '0';
+                        setTimeout(() => {
+                            document.getElementById('login-overlay').style.display = 'none';
+                        }, 500);
+                    }, 1000);
+                } else {
+                    // 登入失敗
+                    loginError.style.display = 'block';
+                    loginButton.disabled = false;
+                    loginButton.innerHTML = '登入';
+                    
+                    // 輕微震動效果
+                    const loginForm = document.getElementById('loginForm');
+                    loginForm.classList.add('shake');
+                    setTimeout(() => {
+                        loginForm.classList.remove('shake');
+                    }, 500);
+                }
+            }, 800);
+        }
+        
+        // 切換密碼可見性
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleButton = document.querySelector('.password-toggle i');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleButton.classList.remove('fa-eye');
+                toggleButton.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleButton.classList.remove('fa-eye-slash');
+                toggleButton.classList.add('fa-eye');
+            }
+        }
+
+        // 確保頁面載入時顯示登入遮罩層
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('login-overlay').style.display = 'flex';
+        });
+    </script>
+</body>
+</html> 

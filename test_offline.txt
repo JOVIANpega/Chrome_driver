@@ -1,0 +1,40 @@
+# 測試腳本 - 使用本地HTML檔案進行離線測試
+# 腳本開始時間: 2023-11-10 15:30:00
+
+# 打開本地HTML檔案
+OPEN_URL = file:///D:/((Python TOOL/Chrome_E2E助手_V2/web/360_TEST_WEBFILE.html
+
+# 等待3秒
+WAIT = 3
+
+# 驗證文字存在
+ASSERT_TEXT = 360 Camera 測試頁面整合
+
+# 驗證頁面標題
+ASSERT_TEXT = 測試頁面
+
+# 點擊側邊欄元素 (假設存在這樣的元素)
+CLICK_BY = .nav-item
+
+# 等待動作完成
+WAIT = 2
+
+# 使用條件判斷
+IF_TEXT_EXISTS = 憑證頁面
+  # 條件成立時執行
+  WAIT = 1
+  ASSERT_TEXT = 憑證
+ELSE
+  # 條件不成立時執行
+  WAIT = 1
+  # 再次點擊另一個側邊欄項目
+  CLICK_BY = .nav-item:nth-child(2)
+ENDIF
+
+# 等待元素出現
+WAIT_FOR_TEXT = 首頁
+
+# 測試完成
+WAIT = 2
+
+# 腳本結束時間: 2023-11-10 15:31:00 

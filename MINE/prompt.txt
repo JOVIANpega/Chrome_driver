@@ -1,0 +1,405 @@
+
+ 自動化網頁檢查 GUI 工具開發說明（給 Cursor AI）
+1. 專案目標
+開發一個無需編程的 GUI 工具，讓非技術人員能：
+
+錄製瀏覽器操作並自動生成腳本
+
+插入文字/網址/截圖/OCR 驗證點
+
+支援多分頁切換操作
+
+打包成單一 EXE 檔案使用
+
+2. 功能需求
+2.1 錄製功能
+開始錄製：啟動瀏覽器並記錄所有操作
+
+暫停錄製：暫時停止記錄
+
+插入驗證點：
+
+文字驗證：檢查網頁文字
+
+網址驗證：確認當前網址
+
+截圖驗證：比對畫面區域
+
+OCR 驗證：識別圖片中的文字
+
+結束錄製：生成可編輯腳本
+
+2.2 腳本格式
+自訂簡易指令範例：
+
+text
+複製
+編輯
+OPEN_URL = https://example.com  
+FILL = #username||test_user  
+CLICK_BY = text=登入  
+支援原生 Playwright 語法（針對特殊需求可混用）
+
+驗證與 OCR 指令範例：
+
+text
+複製
+編輯
+ASSERT_TEXT = 登入成功  
+OCR_ASSERT = (50,50,200,100)||歡迎回來
+2.3 條件判斷與等待控制
+新增以下指令支援：
+
+text
+複製
+編輯
+WAIT = 2                         # 強制等待 2 秒  
+WAIT_FOR_TEXT = 載入完成         # 等待某段文字出現  
+WAIT_FOR_URL = /dashboard        # 等待網址符合條件  
+IF_TEXT_EXISTS = 登入失敗       
+  CLICK_BY = text=重試           
+ENDIF
+WAIT_FOR_* 預設最多等待 10 秒
+
+IF_... 指令需配對 ENDIF，不符合條件則區塊不執行
+
+2.4 跨頁面操作
+支援多分頁操作指令：
+
+text
+複製
+編輯
+SWITCH_TAB = 1      # 切換至第 2 分頁（index 從 0 開始）  
+CLOSE_TAB           # 關閉目前分頁  
+2.5 OCR 驗證
+使用 Tesseract OCR 引擎
+
+格式：
+
+text
+複製
+編輯
+OCR_ASSERT = (x1,y1,x2,y2)||預期文字
+3. 技術規格
+3.1 核心技術
+模組	技術
+語言	Python 3.10+
+自動化	Playwright
+GUI	Tkinter（可搭配 ttk 或 customtkinter）
+OCR	Tesseract
+打包	PyInstaller
+
+3.2 執行與輸出
+可打包為單一 EXE 檔（PyInstaller）
+
+執行腳本時使用真實瀏覽器視窗
+
+GUI 設定如「視窗大小」「文字大小」等可儲存到 config.json，下次啟動自動套用
+
+字體大小支援 + / - 鍵調整
+
+所有按鈕支援 hover 效果（滑鼠經過變藍底白字）
+
+4. 開發優先順序
+基礎操作錄製與執行（點擊、輸入、頁籤切換）
+
+驗證系統（文字驗證、網址驗證、OCR 驗證）
+
+進階功能（截圖比對、條件判斷、等待機制）
+
+最終優化（錯誤處理、GUI 體驗調整、EXE 封裝）
+
+5. 操作流程說明（示意）
+使用者點擊錄製 → 操作瀏覽器 → 插入驗證點 → 停止錄製
+自動產出如下腳本：
+
+text
+複製
+編輯
+OPEN_URL = https://example.com  
+FILL = #user||abc  
+FILL = #pwd||1234  
+CLICK_BY = text=登入  
+WAIT_FOR_TEXT = 歡迎使用者  
+ASSERT_TEXT = 歡迎使用者  
+需要我幫你產生 GUI UI 初稿程式碼 或 腳本執行引擎的框架 也可以直接做，告訴我你想先從哪個部分開始。
+
+
+
+
+
+✅ 補充：條件指令 IF / ELSE / ENDIF
+📌 支援語法：
+text
+複製
+編輯
+IF_TEXT_EXISTS = 請先登入
+  CLICK_BY = text=登入
+  FILL = #username||abc
+  FILL = #pwd||1234
+  CLICK_BY = text=提交
+ELSE
+  ASSERT_TEXT = 歡迎使用者
+ENDIF
+📘 支援條件種類：
+指令	說明
+IF_TEXT_EXISTS	若畫面上有指定文字
+IF_URL_CONTAINS	若網址包含特定字串
+IF_OCR_CONTAINS	若指定區域 OCR 內容符合預期
+ELSE	條件不成立時的備案動作（可省略）
+ENDIF	必須結尾
+
+✅ 更新後完整 PROMPT（含 IF/ELSE 支援）
+1. 專案目標
+開發一個無需編程的 GUI 工具，讓非技術人員能：
+
+錄製瀏覽器操作並自動生成腳本
+
+插入文字/網址/截圖/OCR 驗證點
+
+支援多分頁切換操作與條件控制
+
+打包成單一 EXE 檔案使用
+
+2. 功能需求
+2.1 錄製功能
+開始錄製：啟動瀏覽器並記錄所有操作
+
+暫停錄製 / 恢復
+
+插入驗證點（見下節）
+
+結束錄製：產生腳本檔案
+
+2.2 腳本格式（基本）
+text
+複製
+編輯
+OPEN_URL = https://example.com  
+FILL = #username||test_user  
+CLICK_BY = text=登入  
+ASSERT_TEXT = 登入成功  
+OCR_ASSERT = (50,50,200,100)||歡迎回來
+語法規則：
+
+KEY = VALUE
+
+KEY = VALUE1||VALUE2（例如選擇器與值）
+
+2.3 條件與等待控制
+text
+複製
+編輯
+WAIT = 2  
+WAIT_FOR_TEXT = 載入完成  
+WAIT_FOR_URL = /dashboard  
+
+IF_TEXT_EXISTS = 請先登入
+  CLICK_BY = text=登入
+  FILL = #username||abc
+  FILL = #pwd||1234
+  CLICK_BY = text=提交
+ELSE
+  ASSERT_TEXT = 歡迎使用者
+ENDIF
+支援條件：
+
+IF_TEXT_EXISTS = xxx
+
+IF_URL_CONTAINS = xxx
+
+IF_OCR_CONTAINS = (x1,y1,x2,y2)||文字
+
+所有 IF 條件可搭配 ELSE 與 ENDIF
+
+巢狀 IF 可行但建議不超過兩層
+
+2.4 分頁操作
+text
+複製
+編輯
+SWITCH_TAB = 1  
+CLOSE_TAB  
+2.5 OCR 驗證
+text
+複製
+編輯
+OCR_ASSERT = (x1,y1,x2,y2)||預期文字
+使用 Tesseract 引擎進行辨識
+
+3. 技術規格
+模組	技術
+語言	Python 3.10+
+自動化	Playwright
+GUI	Tkinter（可搭配 ttk 或 customtkinter）
+OCR	Tesseract
+打包	PyInstaller
+
+4. 執行與 GUI 要求
+可打包為 EXE 檔
+
+GUI 要求：
+
+記住視窗大小與文字大小設定（儲存於 config.json）
+
+字體可用 + / - 鍵動態調整
+
+所有按鈕 hover 時變藍底白字
+
+黑色文字為主，避免灰字難辨識
+
+腳本執行時顯示實體瀏覽器視窗以便觀察
+
+5. 開發優先順序
+錄製點擊 / 輸入 / 分頁操作
+
+驗證系統（ASSERT、OCR）
+
+條件與等待控制（IF / WAIT）
+
+GUI 互動優化
+
+打包與錯誤處理補強
+
+6. 操作流程示意
+使用者點選「開始錄製」 → 操作瀏覽器頁面 → 插入驗證點 → 停止錄製
+產出腳本如下：
+
+text
+複製
+編輯
+OPEN_URL = https://example.com  
+FILL = #user||abc  
+FILL = #pwd||1234  
+CLICK_BY = text=登入  
+WAIT_FOR_TEXT = 歡迎使用者  
+ASSERT_TEXT = 歡迎使用者  
+
+
+按鍵統一黑色文字 鼠標經過須要變色 方便USER確認操作
+錄製腳本過程 可以自動縮小成一個小小的GUI 方便讓使用者操作
+使用者操作可能是 打開瀏覽器 輸入網址等等都要記錄下來
+
+
+
+
+錄製完成後自動驗證腳本
+每次錄製結束後，系統需自動產出對應的腳本檔，並立即啟動一次模擬執行流程，以確認錄製的操作步驟與腳本執行行為完全一致。
+
+✅ 功能要求：
+錄製完成後，立即執行一次生成腳本（Playwright 驅動）
+
+若執行過程有錯誤（找不到元素、驗證失敗等），需提示錯誤行與原因
+
+執行使用「可視瀏覽器視窗」模式，方便使用者肉眼比對是否一致
+
+GUI 可顯示「模擬中... / 通過 / 錯誤」等狀態提示
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### **1. 專案目標**  
+開發一個無需編程的GUI工具，讓非技術人員能：  
+1. 錄製瀏覽器操作並自動生成腳本  
+2. 插入文字/網址/截圖/OCR驗證點  
+3. 支援多分頁切換操作  
+4. 打包成單一EXE檔案  
+
+---
+
+### **2. 功能需求**  
+
+#### **2.1 錄製功能**  
+1. 開始錄製：啟動瀏覽器並記錄所有操作  
+2. 暫停錄製：暫時停止記錄  
+3. 插入驗證點：  
+   - 文字驗證：檢查網頁文字  
+   - 網址驗證：確認當前網址  
+   - 截圖驗證：比對畫面區域  
+   - OCR驗證：識別圖片中的文字  
+4. 結束錄製：生成可編輯腳本  
+
+#### **2.2 腳本格式**  
+1. 自訂簡易指令：  
+   ```text
+   OPEN_URL = https://example.com  
+   FILL = #username||test_user  
+   CLICK_BY = text=登入  
+   ```  
+2. 支援原生Playwright語法（特殊需求時使用）  
+3. 驗證指令範例：  
+   ```text
+   ASSERT_TEXT = 登入成功  
+   OCR_ASSERT = (50,50,200,100)||歡迎回來  # 座標區域+預期文字  
+   ```  
+
+#### **2.3 跨頁面操作**  
+1. 分頁切換指令：  
+   ```text
+   SWITCH_TAB = 1  # 切換至第2個分頁  
+   CLOSE_TAB      # 關閉當前分頁  
+   ```  
+
+#### **2.4 OCR驗證**  
+1. 使用Tesseract引擎  
+2. 檢查指定區域是否包含文字：  
+   ```text
+   OCR_ASSERT = (x1,y1,x2,y2)||預期文字  
+   ```  
+
+---
+
+### **3. 技術規格**  
+
+#### **3.1 核心技術**  
+1. 語言：Python 3.10+  
+2. 瀏覽器控制：Playwright  
+3. GUI框架：Tkinter  
+4. OCR引擎：Tesseract  
+
+#### **3.2 輸出要求**  
+1. 可打包為EXE（使用PyInstaller）  方便傳送給任何人使用
+2. 執行時顯示真實瀏覽器視窗  
+3.若有任何GUI設定 例如文字大小 GUI大小 都須要記住 ，下次開啟程式就這樣設定
+4.文字大小須要可+-設定 經過按鍵 按鍵要變色 文字統一黑色 例如 本來灰色按鍵 鼠標經過 變成藍色按鍵
+---
+
+### **4. 開發優先順序**  
+1. 基礎錄製與執行（點擊/輸入/分頁切換）  
+2. 驗證系統（文字/網址/OCR）  
+3. 進階功能（截圖比對、條件判斷）  
+4. 最終優化（錯誤處理、EXE封裝）  
+
+---
+
+### **附註：驗證點操作流程**  
+1. 錄製時點擊「插入驗證點」按鈕  
+2. 選擇驗證類型：  
+   - 文字驗證：選取網頁文字  
+   - OCR驗證：框選圖片區域並輸入預期文字  
+3. 工具自動插入對應指令到腳本中  
+
+---
+
+此版本已完全按照1.2.3.4條列式撰寫，無多餘圖示，可直接貼給Cursor AI處理。需要針對某個功能點進一步細化嗎？

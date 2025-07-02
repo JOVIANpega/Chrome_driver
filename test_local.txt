@@ -1,0 +1,34 @@
+# 本地HTML測試腳本
+# 建立時間: 2023-07-25
+
+# 打開本地HTML文件
+OPEN_URL = file://D:/((Python TOOL/Chrome_E2E助手_V2/web/360_TEST_WEBFILE.html
+
+# 等待頁面載入
+WAIT = 1
+
+# 驗證頁面標題是否存在
+ASSERT_TEXT = 360 Camera 測試頁面整合
+
+# 點擊側邊欄選單
+CLICK_BY = .nav-item:nth-child(1)
+WAIT = 1
+
+# 嘗試點擊內容區域中的元素
+CLICK_BY = .dashboard-card:nth-child(1)
+WAIT = 1
+
+# 檢查URL是否包含特定字符
+IF_URL_CONTAINS = 360_TEST
+  # 點擊另一個側邊欄選單
+  CLICK_BY = .nav-item:nth-child(2)
+  WAIT = 1
+ELSE
+  # URL不符合條件
+  WAIT = 1
+ENDIF
+
+# 測試完成
+WAIT = 1
+
+# 腳本結束時間: 2023-11-10 15:31:00 

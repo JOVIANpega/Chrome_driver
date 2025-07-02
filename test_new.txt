@@ -1,0 +1,10 @@
+# 測試腳本 - 打開測試頁面並點擊按鈕
+OPEN D:/((Python TOOL/Chrome_E2E助手_V2/web/test_page.html
+WAIT 1
+CLICK_BY = #button1
+WAIT 0.5
+CLICK_BY = #button2
+WAIT 0.5
+CLICK_BY = #button3
+WAIT 1
+ASSERT_TEXT = 測試成功 

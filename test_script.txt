@@ -1,0 +1,40 @@
+# 測試腳本 - 基本功能驗證
+# 腳本開始時間: 2023-11-10 15:30:00
+
+# 打開Google搜尋頁面
+OPEN_URL = https://www.google.com
+
+# 等待3秒
+WAIT = 3
+
+# 驗證文字存在
+ASSERT_TEXT = Google
+
+# 驗證URL包含
+ASSERT_URL = google.com
+
+# 在搜尋框輸入文字
+FILL = input[name="q"] || 自動化測試
+
+# 點擊搜尋按鈕
+CLICK_BY = input[name="btnK"]
+
+# 等待搜尋結果頁面
+WAIT_FOR_URL = search
+
+# 驗證搜尋結果頁面文字
+ASSERT_TEXT = 搜尋結果
+
+# 條件判斷測試
+IF_TEXT_EXISTS = 自動化測試
+  # 這些命令會在條件成立時執行
+  WAIT = 2
+  ASSERT_URL = google.com
+ELSE
+  # 這些命令會在條件不成立時執行
+  WAIT = 1
+  ASSERT_TEXT = 找不到結果
+ENDIF
+
+# 測試結束
+# 腳本結束時間: 2023-11-10 15:31:00 

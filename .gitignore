@@ -1,0 +1,49 @@
+# Python 相關檔案
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 虛擬環境
+venv/
+ENV/
+env/
+.env
+
+# 編輯器和IDE相關
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 日誌和臨時文件
+*.log
+temp_script.txt
+*.tmp
+
+# 瀏覽器驅動程式
+chromedriver.exe
+geckodriver.exe
+
+# 打包相關
+*.spec
+
+# 其他
+.DS_Store 

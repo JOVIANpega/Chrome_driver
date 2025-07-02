@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>測試網頁</title>
+    <style>
+        body {
+            font-family: "微軟正黑體", Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        h1 {
+            color: #0066cc;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .container {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #0055aa;
+        }
+        
+        input[type="text"] {
+            padding: 8px;
+            width: 100%;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        .result {
+            min-height: 100px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>自動化測試頁面</h1>
+    
+    <div class="container">
+        <h2>按鈕測試區</h2>
+        <p>點擊下方按鈕來測試點擊功能：</p>
+        
+        <div class="buttons">
+            <button id="button1">按鈕1</button>
+            <button id="button2">按鈕2</button>
+            <button id="button3">按鈕3</button>
+            <button id="showHidden">顯示隱藏內容</button>
+        </div>
+        
+        <div class="result" id="clickResult">結果將顯示在這裡</div>
+    </div>
+    
+    <div class="container">
+        <h2>表單測試區</h2>
+        <p>輸入文字並提交表單：</p>
+        
+        <form id="testForm">
+            <div>
+                <label for="username">使用者名稱：</label>
+                <input type="text" id="username" name="username" placeholder="請輸入使用者名稱">
+            </div>
+            <div>
+                <label for="email">電子郵件：</label>
+                <input type="text" id="email" name="email" placeholder="請輸入電子郵件">
+            </div>
+            <div class="buttons">
+                <button type="submit">提交表單</button>
+                <button type="reset">重設表單</button>
+            </div>
+        </form>
+        
+        <div class="result" id="formResult">表單結果將顯示在這裡</div>
+    </div>
+    
+    <div class="container hidden" id="hiddenContainer">
+        <h2>隱藏內容區</h2>
+        <p>這是一個隱藏的內容區，只有點擊"顯示隱藏內容"按鈕後才會顯示。</p>
+        <div class="buttons">
+            <button id="hideContent">隱藏此內容</button>
+        </div>
+    </div>
+    
+    <script>
+        // 按鈕點擊測試
+        document.getElementById('button1').addEventListener('click', function() {
+            document.getElementById('clickResult').textContent = '已點擊按鈕1';
+        });
+        
+        document.getElementById('button2').addEventListener('click', function() {
+            document.getElementById('clickResult').textContent = '已點擊按鈕2';
+        });
+        
+        document.getElementById('button3').addEventListener('click', function() {
+            document.getElementById('clickResult').textContent = '已點擊按鈕3';
+        });
+        
+        // 顯示/隱藏內容
+        document.getElementById('showHidden').addEventListener('click', function() {
+            document.getElementById('hiddenContainer').classList.remove('hidden');
+        });
+        
+        document.getElementById('hideContent').addEventListener('click', function() {
+            document.getElementById('hiddenContainer').classList.add('hidden');
+        });
+        
+        // 表單提交
+        document.getElementById('testForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            
+            let message = '';
+            if (username && email) {
+                message = `表單已提交! 使用者名稱: ${username}, 電子郵件: ${email}`;
+            } else {
+                message = '請填寫所有欄位!';
+            }
+            
+            document.getElementById('formResult').textContent = message;
+        });
+    </script>
+</body>
+</html> 
