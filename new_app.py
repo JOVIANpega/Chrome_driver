@@ -1,459 +1,708 @@
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, scrolledtext
-import json
+from tkinter import ttk, scrolledtext, filedialog, messagebox
+import threading
 import os
 import sys
-import threading
+import traceback
 from datetime import datetime
+import json
+from recorder_template import get_recorder_script_template
+import subprocess
+import time
+import signal
 
 # 常數定義
-APP_TITLE = "Chrome E2E助手"
-APP_VERSION = "1.0.0"
-DEFAULT_FONT_SIZE = 12
+APP_TITLE = "Playwright E2E助手"
+APP_VERSION = "2.0.0"
+DEFAULT_FONT_SIZE = 11
 CONFIG_FILE = "config.json"
-DEFAULT_WINDOW_SIZE = "800x600"
+DEFAULT_WINDOW_SIZE = "1200x800"  # 增大預設窗口大小
 
-class BrowserAutomationApp:
+class PlaywrightGUI:
     def __init__(self, root):
         self.root = root
         self.root.title(f"{APP_TITLE} v{APP_VERSION}")
         self.root.geometry(DEFAULT_WINDOW_SIZE)
+        self.root.minsize(1000, 700)  # 設置最小窗口大小以確保所有元素都可見
         
         # 設定變數
         self.font_size = tk.IntVar(value=DEFAULT_FONT_SIZE)
-        self.is_recording = False
-        self.current_script = []
+        self.headless_mode = tk.BooleanVar(value=False)
+        self.running = False
+        
+        # 录制相关变量
+        self.recording = False
+        self.recorder_process = None
+        self.recorded_code = []
+        
+        # 讀取配置文件
+        self.load_config()
         
         # 建立UI
         self.create_ui()
+        
+        # 設置關閉窗口的處理
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+    
+    def load_config(self):
+        """載入配置文件"""
+        try:
+            if os.path.exists(CONFIG_FILE):
+                with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                    config = json.load(f)
+                    
+                    # 載入字體大小設定
+                    if "font_size" in config:
+                        self.font_size.set(config["font_size"])
+                    
+                    # 載入窗口大小設定
+                    if "window_size" in config:
+                        self.root.geometry(config["window_size"])
+                    
+                    # 載入無頭模式設定
+                    if "headless_mode" in config:
+                        self.headless_mode.set(config["headless_mode"])
+        except Exception as e:
+            print(f"載入配置文件失敗: {e}")
+    
+    def save_config(self):
+        """保存配置文件"""
+        try:
+            config = {
+                "font_size": self.font_size.get(),
+                "window_size": self.root.geometry(),
+                "headless_mode": self.headless_mode.get()
+            }
+            
+            with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=4)
+        except Exception as e:
+            print(f"保存配置文件失敗: {e}")
     
     def create_ui(self):
         """創建使用者介面"""
-        # 主框架
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        # 設置字體
+        font_family = "Microsoft JhengHei UI" if sys.platform == "win32" else "TkDefaultFont"
+        default_font = (font_family, self.font_size.get())
+        
+        # 主框架 - 使用PanedWindow實現左右分割
+        main_paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
+        main_paned.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # 左側框架 - 腳本編輯區
+        left_frame = ttk.LabelFrame(main_paned, text="Playwright 腳本")
+        main_paned.add(left_frame, weight=50)
+        
+        # 右側框架 - 日誌區
+        right_frame = ttk.LabelFrame(main_paned, text="執行日誌")
+        main_paned.add(right_frame, weight=50)
+        
+        # 腳本編輯區域
+        script_frame = ttk.Frame(left_frame)
+        script_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # 使用Text而非ScrolledText，以便自定義行號顯示
+        self.script_text = tk.Text(script_frame, wrap=tk.NONE, undo=True, font=default_font)
+        self.script_text.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+        
+        # 為腳本文本框添加滾動條
+        script_scrolly = ttk.Scrollbar(script_frame, orient=tk.VERTICAL, command=self.script_text.yview)
+        script_scrolly.pack(fill=tk.Y, side=tk.RIGHT)
+        self.script_text.config(yscrollcommand=script_scrolly.set)
+        
+        script_scrollx = ttk.Scrollbar(script_frame, orient=tk.HORIZONTAL, command=self.script_text.xview)
+        script_scrollx.pack(fill=tk.X, side=tk.BOTTOM)
+        self.script_text.config(xscrollcommand=script_scrollx.set)
+        
+        # 添加一些預設腳本作為示例
+        self.script_text.insert(tk.END, """# Playwright 腳本示例
+# 這裡貼上您的 Playwright 代碼（不需要 sync_playwright 包裝）
+# 範例:
+
+browser = playwright.chromium.launch(headless=False)
+page = browser.new_page()
+page.goto("https://example.com")
+page.fill("input[name='username']", "testuser")
+page.click("text=Login")
+assert "Welcome" in page.content()
+browser.close()
+""")
+        
+        # 日誌區域
+        log_frame = ttk.Frame(right_frame)
+        log_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        self.log_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, font=default_font)
+        self.log_text.pack(fill=tk.BOTH, expand=True)
+        self.log_text.config(state=tk.DISABLED)
+        
+        # 控制區域 - 底部按鈕和選項
+        control_frame = ttk.Frame(self.root)
+        control_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        # 無頭模式複選框
+        headless_check = ttk.Checkbutton(
+            control_frame, 
+            text="無頭模式 (Headless)",
+            variable=self.headless_mode
+        )
+        headless_check.pack(side=tk.LEFT, padx=5)
+        
+        # 字體大小控制
+        font_frame = ttk.Frame(control_frame)
+        font_frame.pack(side=tk.LEFT, padx=15)
+        
+        ttk.Label(font_frame, text="字體大小:").pack(side=tk.LEFT)
+        ttk.Button(font_frame, text="A-", width=3, command=lambda: self.change_font_size(-1)).pack(side=tk.LEFT, padx=2)
+        ttk.Label(font_frame, textvariable=self.font_size).pack(side=tk.LEFT, padx=3)
+        ttk.Button(font_frame, text="A+", width=3, command=lambda: self.change_font_size(1)).pack(side=tk.LEFT, padx=2)
+        
+        # 右側按鈕
+        btn_frame = ttk.Frame(control_frame)
+        btn_frame.pack(side=tk.RIGHT)
+        
+        # 載入和保存按鈕
+        ttk.Button(btn_frame, text="載入腳本", width=10, command=self.load_script).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="保存腳本", width=10, command=self.save_script).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="清空日誌", width=10, command=self.clear_log).pack(side=tk.LEFT, padx=5)
+        
+        # 執行按鈕 - 使用特殊樣式
+        style = ttk.Style()
+        style.configure("Execute.TButton", font=(font_family, self.font_size.get() + 2, "bold"))
+        
+        self.execute_btn = ttk.Button(
+            btn_frame, 
+            text="執行腳本", 
+            width=15, 
+            command=self.execute_script,
+            style="Execute.TButton"
+        )
+        self.execute_btn.pack(side=tk.LEFT, padx=5)
+        
+        # 添加錄製按鈕區域
+        record_frame = ttk.LabelFrame(self.root, text="腳本錄製")
+        record_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        record_btn_frame = ttk.Frame(record_frame)
+        record_btn_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        # 錄製說明
+        ttk.Label(
+            record_btn_frame, 
+            text="錄製功能將打開瀏覽器並記錄您的操作，生成原生 Playwright 腳本。您可以錄製基本的點擊、填寫表單等操作。"
+        ).pack(side=tk.TOP, anchor=tk.W, pady=5)
+        
+        # 錄製URL輸入框
+        url_frame = ttk.Frame(record_btn_frame)
+        url_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(url_frame, text="起始URL:").pack(side=tk.LEFT, padx=(0, 5))
+        self.url_var = tk.StringVar(value="https://example.com")
+        url_entry = ttk.Entry(url_frame, textvariable=self.url_var, width=50)
+        url_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
+        
+        # 錄製控制按鈕
+        btn_control_frame = ttk.Frame(record_btn_frame)
+        btn_control_frame.pack(fill=tk.X, pady=5)
+        
+        # 創建錄製按鈕
+        self.record_btn = ttk.Button(
+            btn_control_frame, 
+            text="開始錄製", 
+            width=15, 
+            command=self.start_recording
+        )
+        self.record_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.stop_btn = ttk.Button(
+            btn_control_frame, 
+            text="停止錄製", 
+            width=15, 
+            command=self.stop_recording,
+            state=tk.DISABLED
+        )
+        self.stop_btn.pack(side=tk.LEFT, padx=5)
+        
+        # 本地文件測試按鈕
+        self.test_page_btn = ttk.Button(
+            btn_control_frame, 
+            text="錄製測試頁面", 
+            width=15, 
+            command=self.record_test_page
+        )
+        self.test_page_btn.pack(side=tk.LEFT, padx=5)
+        
+        # 錄製狀態顯示
+        self.record_status_var = tk.StringVar(value="未錄製")
+        record_status = ttk.Label(
+            btn_control_frame, 
+            textvariable=self.record_status_var,
+            font=(font_family, self.font_size.get(), "bold"),
+            foreground="gray"
+        )
+        record_status.pack(side=tk.LEFT, padx=15)
         
         # 狀態欄
         self.status_var = tk.StringVar(value="就緒")
         status_bar = ttk.Label(self.root, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
         status_bar.pack(fill=tk.X, side=tk.BOTTOM, pady=2)
         
-        # 頂部控制區
-        control_frame = ttk.Frame(main_frame)
-        control_frame.pack(fill=tk.X, pady=(0, 10))
-        
-        # 錄製控制按鈕
-        record_frame = ttk.Frame(control_frame)
-        record_frame.pack(side=tk.LEFT)
-        
-        self.record_btn = ttk.Button(record_frame, text="開始錄製", width=15, 
-                                    command=self.on_record_click)
-        self.record_btn.pack(side=tk.LEFT, padx=5)
-        
-        self.pause_btn = ttk.Button(record_frame, text="暫停錄製", width=15, 
-                                    command=self.on_pause_click, state=tk.DISABLED)
-        self.pause_btn.pack(side=tk.LEFT, padx=5)
-        
-        self.stop_btn = ttk.Button(record_frame, text="停止錄製", width=15, 
-                                   command=self.on_stop_click, state=tk.DISABLED)
-        self.stop_btn.pack(side=tk.LEFT, padx=5)
-        
-        # 驗證點插入按鈕
-        verify_frame = ttk.Frame(main_frame)
-        verify_frame.pack(fill=tk.X, pady=5)
-        
-        verify_label = ttk.Label(verify_frame, text="插入驗證點:")
-        verify_label.pack(side=tk.LEFT, padx=(0, 5))
-        
-        for text, cmd in [
-            ("文字驗證", self.on_text_verify_click),
-            ("網址驗證", self.on_url_verify_click),
-            ("截圖驗證", self.on_screenshot_verify_click),
-            ("OCR驗證", self.on_ocr_verify_click)
-        ]:
-            btn = ttk.Button(verify_frame, text=text, width=10, command=cmd, state=tk.DISABLED)
-            btn.pack(side=tk.LEFT, padx=5)
-            setattr(self, f"{text.replace('驗證', '')}_btn", btn)
-        
-        # 分頁控制
-        tab_frame = ttk.Frame(main_frame)
-        tab_frame.pack(fill=tk.X, pady=5)
-        
-        tab_label = ttk.Label(tab_frame, text="分頁操作:")
-        tab_label.pack(side=tk.LEFT, padx=(0, 5))
-        
-        for text, cmd in [
-            ("切換分頁", self.on_switch_tab_click),
-            ("關閉分頁", self.on_close_tab_click)
-        ]:
-            btn = ttk.Button(tab_frame, text=text, width=10, command=cmd, state=tk.DISABLED)
-            btn.pack(side=tk.LEFT, padx=5)
-            setattr(self, f"{text.replace('分頁', '')}_btn", btn)
-        
-        # 條件控制
-        condition_frame = ttk.Frame(main_frame)
-        condition_frame.pack(fill=tk.X, pady=5)
-        
-        condition_label = ttk.Label(condition_frame, text="條件控制:")
-        condition_label.pack(side=tk.LEFT, padx=(0, 5))
-        
-        for text, cmd in [
-            ("IF文字存在", self.on_if_text_exists_click),
-            ("IF網址包含", self.on_if_url_contains_click),
-            ("ELSE", self.on_else_click),
-            ("ENDIF", self.on_endif_click),
-        ]:
-            btn = ttk.Button(condition_frame, text=text, width=10, command=cmd, state=tk.DISABLED)
-            btn.pack(side=tk.LEFT, padx=5)
-            setattr(self, f"{text.lower().replace(' ', '_')}_btn", btn)
-        
-        # 等待控制
-        wait_frame = ttk.Frame(main_frame)
-        wait_frame.pack(fill=tk.X, pady=5)
-        
-        wait_label = ttk.Label(wait_frame, text="等待控制:")
-        wait_label.pack(side=tk.LEFT, padx=(0, 5))
-        
-        for text, cmd in [
-            ("等待秒數", self.on_wait_seconds_click),
-            ("等待文字", self.on_wait_for_text_click),
-            ("等待網址", self.on_wait_for_url_click)
-        ]:
-            btn = ttk.Button(wait_frame, text=text, width=10, command=cmd, state=tk.DISABLED)
-            btn.pack(side=tk.LEFT, padx=5)
-            setattr(self, f"{text.replace('等待', '')}_btn", btn)
-        
-        # 腳本編輯區域
-        script_frame = ttk.LabelFrame(main_frame, text="腳本編輯")
-        script_frame.pack(fill=tk.BOTH, expand=True, pady=10)
-        
-        self.script_text = scrolledtext.ScrolledText(script_frame, wrap=tk.WORD)
-        self.script_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        
-        # 底部功能按鈕
-        button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=10)
-        
-        for text, cmd in [
-            ("載入腳本", self.on_load_script_click),
-            ("儲存腳本", self.on_save_script_click),
-            ("執行腳本", self.on_run_script_click),
-            ("清空腳本", self.on_clear_script_click)
-        ]:
-            btn = ttk.Button(button_frame, text=text, width=15, command=cmd)
-            btn.pack(side=tk.LEFT, padx=5)
+        # 初始化日誌
+        self.log("Playwright E2E助手已啟動")
+        self.log(f"請在左側輸入 Playwright 腳本，然後點擊「執行腳本」按鈕")
     
-    # 錄製控制函數
-    def on_record_click(self):
-        """開始錄製"""
-        self.is_recording = True
-        self.record_btn.configure(state=tk.DISABLED)
-        self.pause_btn.configure(state=tk.NORMAL)
-        self.stop_btn.configure(state=tk.NORMAL)
-        
-        # 啟用驗證點按鈕
-        self.enable_recording_buttons()
-        
-        self.status_var.set("正在錄製中...")
-        
-        # 啟動瀏覽器並開始錄製 (此處將在main.py中替換為真實實現)
-        self.append_script("# 錄製開始: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        
-        # 啟動錄製瀏覽器的功能會在main.py中實現
-        self.start_recording()
-    
-    def start_recording(self):
-        """啟動錄製 (此函數將在main.py中被替換)"""
-        self.status_var.set("錄製功能已啟動 (此為預設實現，將被main.py替換)")
-    
-    def on_pause_click(self):
-        """暫停錄製"""
-        if self.is_recording:
-            self.is_recording = False
-            self.pause_btn.configure(text="繼續錄製")
-            self.status_var.set("已暫停錄製")
-            self.append_script("# 錄製暫停: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    def change_font_size(self, delta):
+        """變更字體大小"""
+        new_size = self.font_size.get() + delta
+        if 8 <= new_size <= 24:  # 限制字體大小範圍
+            self.font_size.set(new_size)
+            font_family = "Microsoft JhengHei UI" if sys.platform == "win32" else "TkDefaultFont"
             
-            # 暫停錄製的功能會在main.py中實現
-            self.pause_recording()
-        else:
-            self.is_recording = True
-            self.pause_btn.configure(text="暫停錄製")
-            self.status_var.set("正在錄製中...")
-            self.append_script("# 錄製繼續: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            # 更新腳本文本框字體
+            self.script_text.configure(font=(font_family, new_size))
             
-            # 繼續錄製的功能會在main.py中實現
-            self.resume_recording()
+            # 更新日誌文本框字體
+            self.log_text.configure(font=(font_family, new_size))
+            
+            # 更新執行按鈕字體
+            style = ttk.Style()
+            style.configure("Execute.TButton", font=(font_family, new_size + 2, "bold"))
     
-    def pause_recording(self):
-        """暫停錄製 (此函數將在main.py中被替換)"""
-        pass
-    
-    def resume_recording(self):
-        """繼續錄製 (此函數將在main.py中被替換)"""
-        pass
-    
-    def on_stop_click(self):
-        """停止錄製"""
-        self.is_recording = False
-        self.record_btn.configure(state=tk.NORMAL)
-        self.pause_btn.configure(state=tk.DISABLED)
-        self.stop_btn.configure(state=tk.DISABLED)
-        
-        # 禁用驗證點按鈕
-        self.disable_recording_buttons()
-        
-        self.status_var.set("錄製已停止")
-        self.append_script("# 錄製結束: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        
-        # 停止錄製的功能會在main.py中實現
-        self.stop_recording()
-    
-    def stop_recording(self):
-        """停止錄製 (此函數將在main.py中被替換)"""
-        pass
-    
-    def enable_recording_buttons(self):
-        """啟用錄製過程中需要的按鈕"""
-        for btn_name in [
-            "文字_btn", "網址_btn", "截圖_btn", "OCR_btn",
-            "切換_btn", "關閉_btn",
-            "if_文字存在_btn", "if_網址包含_btn", "else_btn", "endif_btn",
-            "秒數_btn", "文字_btn", "網址_btn"
-        ]:
-            if hasattr(self, btn_name):
-                getattr(self, btn_name).configure(state=tk.NORMAL)
-    
-    def disable_recording_buttons(self):
-        """禁用錄製過程中需要的按鈕"""
-        for btn_name in [
-            "文字_btn", "網址_btn", "截圖_btn", "OCR_btn",
-            "切換_btn", "關閉_btn",
-            "if_文字存在_btn", "if_網址包含_btn", "else_btn", "endif_btn",
-            "秒數_btn", "文字_btn", "網址_btn"
-        ]:
-            if hasattr(self, btn_name):
-                getattr(self, btn_name).configure(state=tk.DISABLED)
-    
-    # 驗證點插入函數
-    def on_text_verify_click(self):
-        """插入文字驗證點"""
-        if not self.is_recording:
-            return
-        text = self.show_input_dialog("文字驗證", "請輸入要驗證的文字:")
-        if text:
-            self.append_script(f"ASSERT_TEXT = {text}")
-    
-    def on_url_verify_click(self):
-        """插入網址驗證點"""
-        if not self.is_recording:
-            return
-        url = self.show_input_dialog("網址驗證", "請輸入要驗證的網址部分:")
-        if url:
-            self.append_script(f"ASSERT_URL = {url}")
-    
-    def on_screenshot_verify_click(self):
-        """插入截圖驗證點"""
-        if not self.is_recording:
-            return
-        coords = self.show_input_dialog("截圖驗證", "請輸入截圖區域座標 (x1,y1,x2,y2):")
-        if coords:
-            self.append_script(f"SCREENSHOT_ASSERT = {coords}")
-    
-    def on_ocr_verify_click(self):
-        """插入OCR驗證點"""
-        if not self.is_recording:
-            return
-        coords = self.show_input_dialog("OCR區域", "請輸入OCR區域座標 (x1,y1,x2,y2):")
-        if not coords:
-            return
-        
-        text = self.show_input_dialog("OCR驗證", "請輸入預期的OCR文字:")
-        if text:
-            self.append_script(f"OCR_ASSERT = {coords}||{text}")
-    
-    # 分頁操作函數
-    def on_switch_tab_click(self):
-        """切換分頁"""
-        if not self.is_recording:
-            return
-        tab_index = self.show_input_dialog("切換分頁", "請輸入分頁索引 (從0開始):")
-        if tab_index:
-            self.append_script(f"SWITCH_TAB = {tab_index}")
-    
-    def on_close_tab_click(self):
-        """關閉分頁"""
-        if not self.is_recording:
-            return
-        self.append_script("CLOSE_TAB")
-    
-    # 條件控制函數
-    def on_if_text_exists_click(self):
-        """IF文字存在"""
-        if not self.is_recording:
-            return
-        text = self.show_input_dialog("IF文字存在", "請輸入要檢查的文字:")
-        if text:
-            self.append_script(f"IF_TEXT_EXISTS = {text}")
-    
-    def on_if_url_contains_click(self):
-        """IF網址包含"""
-        if not self.is_recording:
-            return
-        url = self.show_input_dialog("IF網址包含", "請輸入要檢查的網址部分:")
-        if url:
-            self.append_script(f"IF_URL_CONTAINS = {url}")
-    
-    def on_else_click(self):
-        """ELSE"""
-        if not self.is_recording:
-            return
-        self.append_script("ELSE")
-    
-    def on_endif_click(self):
-        """ENDIF"""
-        if not self.is_recording:
-            return
-        self.append_script("ENDIF")
-    
-    # 等待控制函數
-    def on_wait_seconds_click(self):
-        """等待秒數"""
-        if not self.is_recording:
-            return
-        seconds = self.show_input_dialog("等待秒數", "請輸入等待秒數:")
-        if seconds:
-            self.append_script(f"WAIT = {seconds}")
-    
-    def on_wait_for_text_click(self):
-        """等待文字出現"""
-        if not self.is_recording:
-            return
-        text = self.show_input_dialog("等待文字", "請輸入要等待的文字:")
-        if text:
-            self.append_script(f"WAIT_FOR_TEXT = {text}")
-    
-    def on_wait_for_url_click(self):
-        """等待網址"""
-        if not self.is_recording:
-            return
-        url = self.show_input_dialog("等待網址", "請輸入要等待的網址部分:")
-        if url:
-            self.append_script(f"WAIT_FOR_URL = {url}")
-    
-    # 腳本操作函數
-    def on_load_script_click(self):
-        """載入腳本"""
+    def load_script(self):
+        """載入腳本文件"""
         file_path = filedialog.askopenfilename(
-            title="選擇腳本檔案",
-            filetypes=[("文本檔案", "*.txt"), ("所有檔案", "*.*")]
+            title="選擇腳本文件",
+            filetypes=[("Python 文件", "*.py"), ("文本文件", "*.txt"), ("所有文件", "*.*")]
         )
         
-        if not file_path:
-            return
-        
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
+        if file_path:
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                
+                # 清空當前內容並插入新腳本
                 self.script_text.delete(1.0, tk.END)
                 self.script_text.insert(tk.END, content)
+                
                 self.status_var.set(f"已載入腳本: {os.path.basename(file_path)}")
-        except Exception as e:
-            messagebox.showerror("錯誤", f"載入腳本失敗: {e}")
+                self.log(f"已載入腳本文件: {file_path}")
+            except Exception as e:
+                self.status_var.set("載入腳本失敗")
+                self.log(f"載入腳本失敗: {e}")
+                messagebox.showerror("錯誤", f"載入腳本失敗: {e}")
     
-    def on_save_script_click(self):
-        """儲存腳本"""
+    def save_script(self):
+        """保存腳本到文件"""
         file_path = filedialog.asksaveasfilename(
-            title="儲存腳本檔案",
-            defaultextension=".txt",
-            filetypes=[("文本檔案", "*.txt"), ("所有檔案", "*.*")]
+            title="保存腳本文件",
+            defaultextension=".py",
+            filetypes=[("Python 文件", "*.py"), ("文本文件", "*.txt"), ("所有文件", "*.*")]
         )
         
-        if not file_path:
-            return
-        
-        try:
-            content = self.script_text.get(1.0, tk.END)
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-                self.status_var.set(f"已儲存腳本: {os.path.basename(file_path)}")
-        except Exception as e:
-            messagebox.showerror("錯誤", f"儲存腳本失敗: {e}")
+        if file_path:
+            try:
+                content = self.script_text.get(1.0, tk.END)
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                
+                self.status_var.set(f"已保存腳本: {os.path.basename(file_path)}")
+                self.log(f"已保存腳本到文件: {file_path}")
+            except Exception as e:
+                self.status_var.set("保存腳本失敗")
+                self.log(f"保存腳本失敗: {e}")
+                messagebox.showerror("錯誤", f"保存腳本失敗: {e}")
     
-    def on_run_script_click(self):
+    def clear_log(self):
+        """清空日誌"""
+        self.log_text.config(state=tk.NORMAL)
+        self.log_text.delete(1.0, tk.END)
+        self.log_text.config(state=tk.DISABLED)
+        self.log("日誌已清空")
+    
+    def execute_script(self):
         """執行腳本"""
-        script_content = self.script_text.get(1.0, tk.END).strip()
-        if not script_content:
-            messagebox.showinfo("提示", "腳本內容為空，無法執行")
+        if self.running:
+            messagebox.showinfo("提示", "腳本正在執行中，請等待完成")
             return
         
+        # 獲取腳本內容
+        script_content = self.script_text.get(1.0, tk.END).strip()
+        
+        if not script_content:
+            messagebox.showinfo("提示", "請先輸入腳本內容")
+            return
+        
+        # 標記為正在執行
+        self.running = True
+        self.execute_btn.config(state=tk.DISABLED)
         self.status_var.set("正在執行腳本...")
-        self.execute_script(script_content)
+        
+        # 清空先前日誌
+        self.clear_log()
+        self.log("開始執行腳本...")
+        
+        # 在新線程中執行，避免UI凍結
+        threading.Thread(target=self._execute_in_thread, args=(script_content,), daemon=True).start()
     
-    def execute_script(self, script_content):
-        """執行腳本的方法 (會被main.py替換)"""
-        self.status_var.set("執行腳本 (此為預設實現，會被main.py替換)")
+    def _execute_in_thread(self, script_content):
+        """在單獨線程中執行腳本"""
+        try:
+            from playwright.sync_api import sync_playwright
+            
+            # 準備要執行的完整腳本
+            indent_script = "\n    ".join(script_content.split("\n"))
+            
+            complete_script = f"""
+from playwright.sync_api import sync_playwright
+import traceback
+
+def run(playwright):
+    try:
+        # 用戶腳本開始
+        {indent_script}
+        # 用戶腳本結束
+        return True, "腳本執行成功"
+    except Exception as e:
+        error_info = traceback.format_exc()
+        return False, error_info
+
+# 執行腳本
+with sync_playwright() as playwright:
+    success, message = run(playwright)
+    print("SCRIPT_RESULT:" + ("SUCCESS" if success else "ERROR"))
+    print("SCRIPT_MESSAGE:" + message)
+"""
+            # 創建臨時腳本文件
+            temp_script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp_script.py")
+            with open(temp_script_path, "w", encoding="utf-8") as f:
+                f.write(complete_script)
+            
+            # 執行腳本
+            self.log(f"正在使用{'無頭模式' if self.headless_mode.get() else '有頭模式'}執行腳本...")
+            
+            # 設置環境變數控制無頭模式
+            env = os.environ.copy()
+            env["PLAYWRIGHT_HEADLESS"] = str(self.headless_mode.get()).lower()
+            
+            # 執行臨時腳本
+            import subprocess
+            process = subprocess.Popen(
+                [sys.executable, temp_script_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                text=True
+            )
+            
+            # 讀取輸出
+            stdout, stderr = process.communicate()
+            
+            # 處理結果
+            if process.returncode == 0:
+                # 從輸出中提取結果
+                result = "SUCCESS" in stdout
+                if result:
+                    self.log("✅ 腳本執行成功!")
+                else:
+                    # 提取錯誤訊息
+                    error_lines = stdout.split("\n")
+                    error_message = None
+                    for line in error_lines:
+                        if line.startswith("SCRIPT_MESSAGE:"):
+                            error_message = line.replace("SCRIPT_MESSAGE:", "")
+                            break
+                    
+                    if error_message:
+                        self.log("❌ 腳本執行失敗:")
+                        self.log(error_message)
+                    else:
+                        self.log("❌ 腳本執行失敗，但未找到錯誤詳情")
+            else:
+                self.log("❌ 腳本執行過程中發生錯誤:")
+                self.log(stderr)
+            
+            # 刪除臨時腳本
+            try:
+                os.remove(temp_script_path)
+            except:
+                pass
+        
+        except Exception as e:
+            self.log(f"❌ 執行腳本時發生錯誤: {e}")
+            self.log(traceback.format_exc())
+        
+        finally:
+            # 更新UI（回到主線程）
+            self.root.after(0, self._finish_execution)
     
-    def on_clear_script_click(self):
-        """清空腳本"""
-        if messagebox.askyesno("確認", "確定要清空當前腳本內容嗎?"):
-            self.script_text.delete(1.0, tk.END)
-            self.status_var.set("腳本已清空")
-    
-    # 輔助函數
-    def append_script(self, line):
-        """向腳本中添加一行"""
-        current_text = self.script_text.get(1.0, tk.END).rstrip()
-        if current_text:
-            self.script_text.insert(tk.END, f"\n{line}")
-        else:
-            self.script_text.insert(tk.END, line)
-        self.script_text.see(tk.END)
-    
-    def enable_after_execution(self):
-        """執行完成後調用"""
+    def _finish_execution(self):
+        """執行完成後的UI更新（在主線程中）"""
+        self.running = False
+        self.execute_btn.config(state=tk.NORMAL)
         self.status_var.set("腳本執行完成")
+        self.log("腳本執行完成")
     
-    def show_input_dialog(self, title, prompt):
-        """顯示輸入對話框"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title(title)
-        dialog.geometry("400x150")
-        dialog.transient(self.root)
-        dialog.resizable(False, False)
+    def log(self, message):
+        """添加日誌訊息"""
+        # 使用after方法確保在主線程更新UI
+        def _update_log():
+            self.log_text.config(state=tk.NORMAL)
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            self.log_text.insert(tk.END, f"[{timestamp}] {message}\n")
+            self.log_text.see(tk.END)  # 自動滾動到底部
+            self.log_text.config(state=tk.DISABLED)
         
-        ttk.Label(dialog, text=prompt).pack(pady=(20, 10))
+        # 如果在主線程，直接執行；否則使用after方法
+        if threading.current_thread() is threading.main_thread():
+            _update_log()
+        else:
+            self.root.after(0, _update_log)
+    
+    def on_closing(self):
+        """關閉窗口時的處理"""
+        if self.running:
+            if not messagebox.askyesno("警告", "腳本正在執行中，確定要關閉嗎？"):
+                return
         
-        input_var = tk.StringVar()
-        entry = ttk.Entry(dialog, textvariable=input_var, width=40)
-        entry.pack(pady=10)
-        entry.focus_set()
+        # 保存配置
+        self.save_config()
         
-        result = [None]
+        # 關閉窗口
+        self.root.destroy()
+
+    def start_recording(self):
+        """开始录制浏览器操作"""
+        if self.recording or self.running:
+            messagebox.showinfo("提示", "已有正在进行的录制或执行任务")
+            return
+            
+        url = self.url_var.get().strip()
+        if not url:
+            messagebox.showinfo("提示", "请输入起始URL")
+            return
+            
+        # 确保URL格式正确
+        if not url.startswith(("http://", "https://", "file://")):
+            if os.path.exists(url):
+                url = f"file://{os.path.abspath(url)}"
+            else:
+                url = f"https://{url}"
+                
+        # 清空之前的录制内容
+        self.recorded_code = []
         
-        def on_ok():
-            result[0] = input_var.get()
-            dialog.destroy()
+        # 更新状态
+        self.recording = True
+        self.record_btn.config(state=tk.DISABLED)
+        self.stop_btn.config(state=tk.NORMAL)
+        self.test_page_btn.config(state=tk.DISABLED)
+        self.execute_btn.config(state=tk.DISABLED)
+        self.record_status_var.set("录制中...")
         
-        def on_cancel():
-            dialog.destroy()
+        # 在新线程中启动录制，避免UI冻结
+        threading.Thread(target=self._start_recording_process, args=(url,), daemon=True).start()
         
-        button_frame = ttk.Frame(dialog)
-        button_frame.pack(pady=10)
+    def _start_recording_process(self, url):
+        """在单独线程中启动录制进程"""
+        try:
+            self.log("開始錄製瀏覽器操作...")
+            self.log(f"打開URL: {url}")
+            self.log("請在操作完成後關閉瀏覽器窗口以結束錄製")
+            
+            # 创建临时Python文件用于记录操作
+            recorder_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recorder_temp.py")
+            
+            # 使用模板生成录制脚本
+            with open(recorder_script, "w", encoding="utf-8") as f:
+                f.write(get_recorder_script_template(url))
+            
+            # 执行录制脚本
+            import subprocess
+            
+            self.log("啟動錄製進程...")
+            
+            # 使用新的方式启动录制进程，以确保正确处理输出和子进程
+            # 在Windows上使用CREATE_NEW_CONSOLE确保进程在单独的控制台窗口中运行
+            # 这样即使主程序关闭，录制进程也能继续运行
+            self.recorder_process = subprocess.Popen(
+                [sys.executable, recorder_script],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == "win32" else 0
+            )
+            
+            # 创建一个线程来监控录制进程的输出
+            def monitor_output():
+                for line in iter(self.recorder_process.stdout.readline, ''):
+                    if line.strip():
+                        self.log(f"錄製: {line.strip()}")
+                        
+                        # 检查是否有生成的代码
+                        if "生成的 Playwright Python 腳本:" in line:
+                            # 接下来的行是生成的代码
+                            in_code_section = True
+                            continue
+                            
+                        if in_code_section and line.strip() and not line.startswith("沒有生成"):
+                            self.recorded_code.append(line.strip())
+                        
+                        # 检查是否录制已结束
+                        if "頁面已關閉，結束錄製..." in line or "瀏覽器已關閉" in line:
+                            self.log("瀏覽器已關閉，錄製結束")
+                            # 当进程结束时，检查是否有生成的脚本文件
+                            self.root.after(0, self._check_recorded_script)
+                
+                # 无论如何，当进程输出结束时，检查是否有生成的脚本文件
+                self.root.after(0, self._check_recorded_script)
+            
+            # 启动监控线程
+            in_code_section = False
+            monitor_thread = threading.Thread(target=monitor_output, daemon=True)
+            monitor_thread.start()
+            
+            # 显示录制状态提示
+            self.log("錄製已開始，請在瀏覽器中操作...")
+            self.log("當您完成操作，請手動關閉瀏覽器窗口來結束錄製")
+                
+        except Exception as e:
+            self.log(f"錄製過程中發生錯誤: {e}")
+            self.log(traceback.format_exc())
+            # 更新UI
+            self.root.after(0, self._finish_recording)
+    
+    def _check_recorded_script(self):
+        """检查是否有生成的脚本文件"""
+        generated_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "generated_script.py")
+        if os.path.exists(generated_script):
+            try:
+                with open(generated_script, "r", encoding="utf-8") as f:
+                    # 只读取非注释行和非空行
+                    self.recorded_code = [
+                        line.strip() for line in f 
+                        if line.strip() and not line.strip().startswith("#") and not "browser" in line
+                    ]
+                
+                self.log(f"已從生成的腳本文件中讀取 {len(self.recorded_code)} 行代碼")
+            except Exception as e:
+                self.log(f"讀取生成的腳本文件時出錯: {e}")
         
-        ttk.Button(button_frame, text="確定", command=on_ok, width=10).pack(side=tk.LEFT, padx=10)
-        ttk.Button(button_frame, text="取消", command=on_cancel, width=10).pack(side=tk.LEFT, padx=10)
+        # 清理临时文件
+        try:
+            recorder_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recorder_temp.py")
+            if os.path.exists(recorder_script):
+                os.remove(recorder_script)
+                
+            # 清理临时JSON文件
+            recorded_actions = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recorded_actions.json")
+            if os.path.exists(recorded_actions):
+                os.remove(recorded_actions)
+        except Exception as e:
+            self.log(f"清理臨時文件時出錯: {e}")
+            
+        # 完成录制
+        self._finish_recording()
+    
+    def _finish_recording(self):
+        """完成录制并更新UI"""
+        self.recording = False
+        self.record_btn.config(state=tk.NORMAL)
+        self.stop_btn.config(state=tk.DISABLED)
+        self.test_page_btn.config(state=tk.NORMAL)
+        self.execute_btn.config(state=tk.NORMAL)
+        self.record_status_var.set("录制完成")
         
-        # 按Enter鍵確認
-        dialog.bind("<Return>", lambda e: on_ok())
+        # 将录制的代码添加到编辑区
+        if self.recorded_code:
+            # 备份当前编辑区内容
+            current_content = self.script_text.get(1.0, tk.END).strip()
+            
+            # 添加录制的代码
+            if current_content:
+                # 添加到现有内容
+                separator = "\n\n# --- 新录制内容 ---\n"
+                self.script_text.insert(tk.END, separator)
+                for line in self.recorded_code:
+                    self.script_text.insert(tk.END, f"\n{line}")
+            else:
+                # 设置为录制的代码
+                self.script_text.delete(1.0, tk.END)
+                
+                # 添加标准模板
+                template = """# Playwright 脚本 - 由录制功能生成
+# 可以编辑此脚本，然后点击"执行脚本"按钮运行
+
+browser = playwright.chromium.launch(headless=False)
+page = browser.new_page()
+
+# 录制的操作:
+"""
+                self.script_text.insert(tk.END, template)
+                
+                # 添加录制的操作
+                for line in self.recorded_code:
+                    self.script_text.insert(tk.END, f"{line}\n")
+                    
+                # 添加关闭浏览器
+                self.script_text.insert(tk.END, "\n# 关闭浏览器\nbrowser.close()")
+            
+            self.log(f"已将录制的 {len(self.recorded_code)} 行代码添加到脚本编辑区")
+        else:
+            self.log("未录制到任何操作")
+            
+    def stop_recording(self):
+        """停止录制"""
+        if not self.recording:
+            return
+            
+        self.log("正在停止錄製...")
         
-        dialog.wait_window()
-        return result[0]
+        # 尝试终止录制进程
+        if self.recorder_process:
+            try:
+                # 在Windows上使用taskkill强制关闭进程树
+                if sys.platform == "win32":
+                    subprocess.run(
+                        ["taskkill", "/F", "/T", "/PID", str(self.recorder_process.pid)],
+                        stderr=subprocess.PIPE,
+                        stdout=subprocess.PIPE
+                    )
+                else:
+                    # 在Unix系统上终止进程
+                    os.kill(self.recorder_process.pid, signal.SIGTERM)
+                
+                self.log("已終止錄製進程")
+            except Exception as e:
+                self.log(f"終止錄製進程時出錯: {e}")
+            
+            # 给进程一些时间来清理
+            time.sleep(0.5)
+            
+            # 检查生成的脚本文件
+            self.root.after(100, self._check_recorded_script)
+    
+    def record_test_page(self):
+        """录制测试页面"""
+        # 获取测试页面路径
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        test_page_path = os.path.join(current_dir, "web", "test_page.html")
+        
+        if os.path.exists(test_page_path):
+            # 设置URL为测试页面
+            self.url_var.set(f"file://{test_page_path}")
+            self.log(f"已设置测试页面: {test_page_path}")
+            
+            # 开始录制
+            self.start_recording()
+        else:
+            self.log(f"找不到测试页面: {test_page_path}")
+            messagebox.showinfo("提示", f"找不到测试页面: {test_page_path}\n请确保web目录中存在test_page.html文件")
 
 def main():
-    """主函數"""
+    """程式入口點"""
     root = tk.Tk()
-    app = BrowserAutomationApp(root)
+    app = PlaywrightGUI(root)
     root.mainloop()
 
 if __name__ == "__main__":

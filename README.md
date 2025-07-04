@@ -1,116 +1,141 @@
-# Chrome E2E助手 V2.0
+# Playwright E2E助手 V2.0
 
-一個簡單易用的瀏覽器自動化GUI工具，使用Python和Playwright開發。
+一個簡單易用的瀏覽器自動化GUI工具，使用Python和Playwright開發，支持原生Playwright Python語法。
 
-## 版本資訊
+## 專案說明
 
-**當前版本：V2.0 (2025-07-02)**
+此專案是一個重構版本，從原本的自創腳本語法改為支援Playwright的原生Python語法，讓使用者可以直接編寫標準Playwright代碼並執行。
 
-### 新增功能
-- 改進的使用者介面，增加明顯的底部按鈕
-- 新增字體大小調整功能，適應不同螢幕尺寸
-- 優化腳本載入和執行流程，提高穩定性
-- 改進錄製和執行過程中的錯誤處理
-- 錄製完成後自動驗證腳本功能
-- 新增詢問是否立即執行錄製腳本的選項
+## 主要功能
 
-## 功能特點
+- **原生Playwright語法支持**：直接編寫和執行標準Playwright Python代碼
+- **腳本錄製功能**：透過瀏覽器操作自動生成Playwright代碼
+- **雙面板界面**：左側編輯腳本，右側查看執行日誌
+- **無頭模式選項**：可選擇是否在後台執行瀏覽器
+- **字體大小調整**：支援從8至24的字體範圍調整
+- **腳本管理**：可保存和載入自動化腳本
+- **錯誤處理**：詳細的執行錯誤報告
+- **打包部署**：可打包為單一EXE檔案，方便分享使用
 
-- 基於Playwright的瀏覽器自動化
-- 簡潔直觀的GUI界面
-- 支援多種驗證點：文字、網址、截圖、OCR
-- 支援條件判斷和分支執行
-- 支援多分頁操作
-- 可保存和載入自動化腳本
+## 安裝方式
 
-## 安裝指南
+### 方法一：使用EXE檔案（推薦）
+
+1. 下載最新的發布版本EXE檔案
+2. 直接運行EXE檔案即可使用
+
+### 方法二：從源碼運行
 
 1. 確保已安裝Python 3.8+
-2. 安裝依賴套件：
+2. 克隆此儲存庫：
+   ```
+   git clone https://github.com/JOVIANpega/Playwright_E2E.git
+   cd Playwright_E2E
+   ```
+3. 安裝依賴套件：
    ```
    pip install -r requirements.txt
    ```
-3. 安裝Playwright瀏覽器：
+4. 安裝Playwright瀏覽器：
    ```
    python -m playwright install
    ```
-4. 運行應用：
+5. 運行程式：
    ```
    python main.py
    ```
 
+## 使用方法
+
+### 方法一：錄製腳本
+
+1. 在「腳本錄製」區域填寫起始URL，或使用「錄製測試頁面」按鈕
+2. 點擊「開始錄製」按鈕，將打開瀏覽器
+3. 在瀏覽器中進行操作（點擊、輸入等），這些操作將被記錄
+4. 操作完成後關閉瀏覽器或點擊「停止錄製」按鈕
+5. 錄製的操作會以Playwright原生Python語法顯示在左側編輯區
+6. 可以直接編輯腳本，然後點擊「執行腳本」按鈕運行
+
+### 方法二：手動編寫腳本
+
+1. 在左側面板中編寫Playwright腳本（使用原生語法）
+2. 選擇是否啟用無頭模式
+3. 點擊「執行腳本」按鈕運行自動化測試
+4. 在右側面板查看執行日誌和錯誤信息
+5. 使用「A+/A-」按鈕調整界面字體大小
+
 ## 腳本語法
 
-腳本採用簡單的指令格式：`命令 = 參數`
+此版本使用標準Playwright Python語法，不需要添加import語句或with sync_playwright()包裝。例如：
 
-### 基本操作
-- `OPEN_URL = https://example.com` - 打開網址
-- `FILL = input[name="username"] || myusername` - 填寫表單
-- `CLICK_BY = button#submit` - 點擊元素
-
-### 驗證點
-- `ASSERT_TEXT = 歡迎登入` - 驗證頁面包含指定文字
-- `ASSERT_URL = dashboard` - 驗證URL包含指定文字
-- `SCREENSHOT_ASSERT = 100,100,300,300` - 截圖驗證
-- `OCR_ASSERT = 100,100,300,300||會員中心` - OCR文字驗證
-
-### 條件控制
-- `IF_TEXT_EXISTS = 登入成功` - 如果文字存在
-- `IF_URL_CONTAINS = dashboard` - 如果URL包含
-- `IF_OCR_CONTAINS = 100,100,300,300||成功` - 如果OCR區域包含
-- `ELSE` - 否則
-- `ENDIF` - 結束條件塊
-
-### 等待控制
-- `WAIT = 5` - 等待秒數
-- `WAIT_FOR_TEXT = 加載完成` - 等待文字出現
-- `WAIT_FOR_URL = success` - 等待URL包含
-
-### 分頁操作
-- `SWITCH_TAB = 1` - 切換到指定分頁
-- `CLOSE_TAB` - 關閉當前分頁
-
-## 版本更新歷史
-
-### V2.0 (2025-07-02)
-- 修復腳本載入按鈕無法正常工作的問題
-- 修復錄製和執行腳本時的錯誤處理
-- 解決 `AttributeError: 'BrowserAutomation' object has no attribute 'is_paused'` 錯誤
-- 增強錯誤處理，確保瀏覽器關閉時能優雅退出
-- 新增字體大小調整功能，支援從8至24的字體範圍調整
-- 優化UI佈局，增加底部功能按鈕，提升視覺效果
-- 新增錄製完成後詢問是否立即執行腳本的功能
-
-### V1.0 (2025-07-01)
-- 初始版本發布
-- 基本的瀏覽器自動化功能
-- 腳本錄製與執行功能
-- 基本的GUI界面
-
-## 常見問題
-
-### "ValueError: source code string cannot contain null bytes"
-
-如果遇到此錯誤，可能是文件中包含無效字元。解決方法：
-
-1. 使用純文本編輯器重新創建文件
-2. 或者執行以下命令修復：
-   ```
-   copy app_clean.py app.py
-   copy main_clean.py main.py
-   ```
-
-### 瀏覽器無法啟動
-
-請確保已正確安裝Playwright瀏覽器：
-```
-python -m playwright install
+```python
+browser = playwright.chromium.launch(headless=False)
+page = browser.new_page()
+page.goto("https://example.com")
+page.fill("input[name='username']", "testuser")
+page.click("text=Login")
+assert "Welcome" in page.content()
+browser.close()
 ```
 
-### AttributeError: 'BrowserAutomation' object has no attribute 'is_paused'
+## 錄製功能支持的操作
 
-如果遇到此錯誤，請確保使用最新版本的應用程式。在V2.0版本中，此問題已修復。
+目前錄製功能支持以下操作：
 
-## 授權
+1. 頁面導航 (`page.goto()`)
+2. 點擊元素 (`page.click()`)
+3. 填寫表單 (`page.fill()`)
 
-本軟體採用MIT授權。 
+錄製過程會使用元素的ID、類名、文本內容等生成選擇器，以便Playwright能準確定位元素。
+
+## 常見問題解答
+
+### 是否需要包含import語句？
+不需要，程式會自動處理必要的導入。只需撰寫Playwright代碼本身。
+
+### 如何調試腳本錯誤？
+錯誤信息會顯示在右側日誌面板中，包含行號和詳細的異常信息。
+
+### 腳本執行時瀏覽器沒有顯示？
+請檢查"無頭模式"是否被勾選，將其取消勾選即可看到瀏覽器界面。
+
+### 錄製功能沒有捕獲我的所有操作？
+錄製功能目前主要支援點擊和輸入操作。對於更複雜的操作（如拖拽、懸停等），建議手動編輯腳本添加。
+
+## 系統需求
+
+- Windows 10 或以上版本
+- Python 3.8+（從源碼運行時需要）
+- 與系統相容的Chrome、Firefox或Edge瀏覽器
+
+## 版本歷史
+
+### V2.02 (2025-07-17)
+- 修復錄製功能中瀏覽器快速關閉的問題
+- 改進瀏覽器窗口存活檢測機制，使用 page.title() 方法
+- 新增錄製時間戳記錄，更好地追蹤錄製過程
+- 優化錄製腳本的保存方式，自動生成帶時間戳的文件名
+- 改進錄製過程中的用戶提示訊息
+
+### V2.0 (2025-07-15)
+- 重構為使用原生Playwright Python語法
+- 新增腳本錄製功能，自動生成Playwright代碼
+- 雙面板界面設計
+- 支持無頭模式選項
+- 詳細的執行錯誤報告
+
+### V1.0 (2024-12-01)
+- 首次發布版本
+- 使用自創腳本語法
+
+## 開發說明
+
+本工具使用以下技術:
+- **Python**: 核心開發語言
+- **Tkinter**: GUI框架
+- **Playwright**: 瀏覽器自動化引擎
+- **PyInstaller**: 打包成EXE
+
+## 授權協議
+
+本軟體為自由軟體，使用MIT授權協議。詳情請參閱LICENSE文件。 
